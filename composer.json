@@ -1,0 +1,32 @@
+{
+  "name": "wlsh/skeleton",
+  "description": "运行环境：php8 / nginx1.18.0 / swoole4.5.9 / Mysql8 / Redis6",
+  "keywords": [
+    "swoole",
+    "php"
+  ],
+  "authors": [
+    {
+      "name": "hanhyu",
+      "email": "hanhyu@qq.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=8.0",
+    "wlsh/core": "^1.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Modules\\": "./App/Modules",
+      "Domain\\": "./App/Domain",
+      "Models\\": "./App/Models"
+    }
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-master",
+    "friendsofphp/php-cs-fixer": "^3.6.0",
+    "phpunit/phpunit": "^9.5.0",
+    "swoole/ide-helper": "4.8.6"
+  }
+}

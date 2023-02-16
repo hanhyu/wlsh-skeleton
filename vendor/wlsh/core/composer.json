@@ -1,0 +1,59 @@
+{
+  "name": "wlsh/core",
+  "description": "运行环境：php8 / nginx1.18.0 / swoole4.5.9 / Mysql8 / Redis6",
+  "keywords": [
+    "swoole",
+    "php"
+  ],
+  "authors": [
+    {
+      "name": "hanhyu",
+      "email": "hanhyu@qq.com",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=8.0",
+    "ext-swoole": ">=4.8.6",
+    "ext-json": "*",
+    "ext-redis": ">=5.3.2",
+    "monolog/monolog": "2.2.0",
+    "symfony/mailer": "6.0.3",
+    "webgeeker/validation": "0.5.2",
+    "elasticsearch/elasticsearch": "^7.11.x-dev",
+    "envms/fluentpdo": "2.2.4",
+    "smi2/phpclickhouse": "^1.4"
+  },
+  "repositories": {
+    "packagist": {
+      "type": "composer",
+      "url": "https://mirrors.aliyun.com/composer/"
+    }
+  },
+  "autoload": {
+    "psr-4": {
+      "Wlsh\\": "./src",
+      "Modules\\": "tests/example/App/Modules",
+      "Domain\\": "tests/example/App/Domain",
+      "Models\\": "tests/example/App/Models"
+    }
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-master",
+    "friendsofphp/php-cs-fixer": "^3.6.0",
+    "phpunit/phpunit": "^9.5.0",
+    "swoole/ide-helper": "4.8.6"
+  },
+  "suggest": {
+    "ext-mongodb": ">=1.9.0",
+    "ext-redis": ">=5.3.2",
+    "monolog/monolog": "2.2.0",
+    "symfony/mailer": "6.0.3",
+    "webgeeker/validation": "0.5.2",
+    "mongodb/mongodb": "1.8.0",
+    "elasticsearch/elasticsearch": "^7.11.x-dev",
+    "longlang/phpkafka": "1.2.1",
+    "envms/fluentpdo": "2.2.4",
+    "smi2/phpclickhouse": "^1.4"
+  }
+}

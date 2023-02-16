@@ -1,0 +1,1 @@
+[2023-02-16 16:59:57 *17583.1]	NOTICE	php_swoole_server_rshutdown() (ERRNO 9003): worker process is terminated by exit()/die()

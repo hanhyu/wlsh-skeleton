@@ -1,0 +1,5 @@
+cd
+0.78357600 1676039894:{"message":"请求方法不正确","trace":[{"file":"/home/hanhui/phpProject/wlsh-core/src/Bootstrap.php","line":460,"function":"routerStartup","class":"Bootstrap","type":"->"},{"function":"onTask","class":"Bootstrap","type":"->"}]}
+0.19903900 1676039897:{"message":"请求方法不正确","trace":[{"file":"/home/hanhui/phpProject/wlsh-core/src/Bootstrap.php","line":460,"function":"routerStartup","class":"Bootstrap","type":"->"},{"function":"onTask","class":"Bootstrap","type":"->"}]}
+0.04079800 1676039899:{"message":"请求方法不正确","trace":[{"file":"/home/hanhui/phpProject/wlsh-core/src/Bootstrap.php","line":460,"function":"routerStartup","class":"Bootstrap","type":"->"},{"function":"onTask","class":"Bootstrap","type":"->"}]}
+0.29646400 1676039909:{"message":"请求方法不正确","trace":[{"file":"/home/hanhui/phpProject/wlsh-core/src/Bootstrap.php","line":460,"function":"routerStartup","class":"Bootstrap","type":"->"},{"function":"onTask","class":"Bootstrap","type":"->"}]}
