@@ -122,6 +122,10 @@ function explain(): void
 
 function start(array &$argv): void
 {
+    if (!file_exists("Log") or !file_exists("Config/environ.php")) {
+        exit("Run the init script first" . PHP_EOL);
+    }
+
     $daemonize = false;
     $param = 'produce';
     if (isset($argv[2])) {

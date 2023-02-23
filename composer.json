@@ -20,7 +20,8 @@
     "psr-4": {
       "Modules\\": "./App/Modules",
       "Domain\\": "./App/Domain",
-      "Models\\": "./App/Models"
+      "Models\\": "./App/Models",
+      "Console\\Controllers\\": "Console/Controllers"
     }
   },
   "require-dev": {

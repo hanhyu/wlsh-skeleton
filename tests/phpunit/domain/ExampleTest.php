@@ -12,7 +12,6 @@ class ExampleTest extends TestCase
     {
         $res = (new ExampleDomain())->getList();
         $this->assertEquals('hello world', $res);
-        $this->assertEquals('hello world1', $res);
     }
 
 }

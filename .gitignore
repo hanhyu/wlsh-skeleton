@@ -1,1 +1,6 @@
 .idea
+/Log
+.git
+*.DS_Store
+/Config/sendEmail.php
+/Config/environ.php
