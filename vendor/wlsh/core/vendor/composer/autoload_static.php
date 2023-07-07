@@ -78,7 +78,6 @@ class ComposerStaticInitacf4a6d72d13ebba659a0c3e72f139d3
         ),
         'E' => 
         array (
-            'Envms\\FluentPDO\\' => 16,
             'Elasticsearch\\' => 14,
             'Egulias\\EmailValidator\\' => 23,
         ),
@@ -236,10 +235,6 @@ class ComposerStaticInitacf4a6d72d13ebba659a0c3e72f139d3
         'GuzzleHttp\\Ring\\' => 
         array (
             0 => __DIR__ . '/..' . '/ezimuel/ringphp/src',
-        ),
-        'Envms\\FluentPDO\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/envms/fluentpdo/src',
         ),
         'Elasticsearch\\' => 
         array (

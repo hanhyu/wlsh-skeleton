@@ -4,7 +4,7 @@ return [
 
     //指定Access-Control-Allow-Origin的值
     'origin' => [
-        'domain' => 'https://127.0.0.1:9772',
+        'domain' => 'http://127.0.0.1:9772',
     ],
 
     'mysql' => [

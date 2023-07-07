@@ -40,7 +40,6 @@ return array(
     'Models\\' => array($baseDir . '/tests/example/App/Models'),
     'GuzzleHttp\\Stream\\' => array($vendorDir . '/ezimuel/guzzlestreams/src'),
     'GuzzleHttp\\Ring\\' => array($vendorDir . '/ezimuel/ringphp/src'),
-    'Envms\\FluentPDO\\' => array($vendorDir . '/envms/fluentpdo/src'),
     'Elasticsearch\\' => array($vendorDir . '/elasticsearch/elasticsearch/src/Elasticsearch'),
     'Egulias\\EmailValidator\\' => array($vendorDir . '/egulias/email-validator/src'),
     'Domain\\' => array($baseDir . '/tests/example/App/Domain'),

@@ -19,7 +19,6 @@ use PhpCsFixer\DocBlock\DocBlock;
 use PhpCsFixer\DocBlock\TypeExpression;
 use PhpCsFixer\Fixer\ConfigurableFixerInterface;
 use PhpCsFixer\Fixer\WhitespacesAwareFixerInterface;
-use PhpCsFixer\FixerConfiguration\AllowedValueSubset;
 use PhpCsFixer\FixerConfiguration\FixerConfigurationResolver;
 use PhpCsFixer\FixerConfiguration\FixerConfigurationResolverInterface;
 use PhpCsFixer\FixerConfiguration\FixerOptionBuilder;
@@ -49,16 +48,14 @@ final class PhpdocAlignFixer extends AbstractFixer implements ConfigurableFixerI
      */
     public const ALIGN_VERTICAL = 'vertical';
 
-    private const ALIGNABLE_TAGS = [
+    private const DEFAULT_TAGS = [
+        'method',
         'param',
         'property',
-        'property-read',
-        'property-write',
         'return',
         'throws',
         'type',
         'var',
-        'method',
     ];
 
     private const TAGS_WITH_NAME = [
@@ -66,30 +63,38 @@ final class PhpdocAlignFixer extends AbstractFixer implements ConfigurableFixerI
         'property',
         'property-read',
         'property-write',
+        'phpstan-param',
+        'phpstan-property',
+        'phpstan-property-read',
+        'phpstan-property-write',
+        'phpstan-assert',
+        'phpstan-assert-if-true',
+        'phpstan-assert-if-false',
+        'psalm-param',
+        'psalm-param-out',
+        'psalm-property',
+        'psalm-property-read',
+        'psalm-property-write',
+        'psalm-assert',
+        'psalm-assert-if-true',
+        'psalm-assert-if-false',
     ];
 
     private const TAGS_WITH_METHOD_SIGNATURE = [
         'method',
+        'phpstan-method',
+        'psalm-method',
     ];
 
-    /**
-     * @var string
-     */
-    private $regex;
+    private string $regex;
 
-    /**
-     * @var string
-     */
-    private $regexCommentLine;
+    private string $regexCommentLine;
 
     /**
      * @var string
      */
     private $align;
 
-    /**
-     * {@inheritdoc}
-     */
     public function configure(array $configuration): void
     {
         parent::configure($configuration);
@@ -97,13 +102,14 @@ final class PhpdocAlignFixer extends AbstractFixer implements ConfigurableFixerI
         $tagsWithNameToAlign = array_intersect($this->configuration['tags'], self::TAGS_WITH_NAME);
         $tagsWithMethodSignatureToAlign = array_intersect($this->configuration['tags'], self::TAGS_WITH_METHOD_SIGNATURE);
         $tagsWithoutNameToAlign = array_diff($this->configuration['tags'], $tagsWithNameToAlign, $tagsWithMethodSignatureToAlign);
-        $types = [];
 
-        $indent = '(?P<indent>(?:\ {2}|\t)*)';
+        $indentRegex = '^(?P<indent>(?:\ {2}|\t)*)\ ?';
+
+        $types = [];
 
         // e.g. @param <hint> <$var>
         if ([] !== $tagsWithNameToAlign) {
-            $types[] = '(?P<tag>'.implode('|', $tagsWithNameToAlign).')\s+(?P<hint>(?:'.TypeExpression::REGEX_TYPES.')?)\s+(?P<var>(?:&|\.{3})?\$\S+)';
+            $types[] = '(?P<tag>'.implode('|', $tagsWithNameToAlign).')\s+(?P<hint>(?:'.TypeExpression::REGEX_TYPES.')?)\s*(?P<var>(?:&|\.{3})?\$\S+)';
         }
 
         // e.g. @return <hint>
@@ -113,20 +119,17 @@ final class PhpdocAlignFixer extends AbstractFixer implements ConfigurableFixerI
 
         // e.g. @method <hint> <signature>
         if ([] !== $tagsWithMethodSignatureToAlign) {
-            $types[] = '(?P<tag3>'.implode('|', $tagsWithMethodSignatureToAlign).')(\s+(?P<static>static))?(\s+(?P<hint3>[^\s(]+)|)\s+(?P<signature>.+\))';
+            $types[] = '(?P<tag3>'.implode('|', $tagsWithMethodSignatureToAlign).')(\s+(?P<static>static))?(\s+(?P<hint3>(?:'.TypeExpression::REGEX_TYPES.')?))\s+(?P<signature>.+\))';
         }
 
         // optional <desc>
         $desc = '(?:\s+(?P<desc>\V*))';
 
-        $this->regex = '/^'.$indent.'\ \*\ @(?J)(?:'.implode('|', $types).')'.$desc.'\s*$/ux';
-        $this->regexCommentLine = '/^'.$indent.' \*(?! @)(?:\s+(?P<desc>\V+))(?<!\*\/)\r?$/u';
+        $this->regex = '/'.$indentRegex.'\*\h*@(?J)(?:'.implode('|', $types).')'.$desc.'\h*\r?$/';
+        $this->regexCommentLine = '/'.$indentRegex.'\*(?!\h?+@)(?:\s+(?P<desc>\V+))(?<!\*\/)\r?$/';
         $this->align = $this->configuration['align'];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         $code = <<<'EOF'
@@ -154,7 +157,7 @@ EOF;
     /**
      * {@inheritdoc}
      *
-     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, GeneralPhpdocTagRenameFixer, NoBlankLinesAfterPhpdocFixer, NoEmptyPhpdocFixer, NoSuperfluousPhpdocTagsFixer, PhpdocAddMissingParamAnnotationFixer, PhpdocAnnotationWithoutDotFixer, PhpdocIndentFixer, PhpdocInlineTagNormalizerFixer, PhpdocLineSpanFixer, PhpdocNoAccessFixer, PhpdocNoAliasTagFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocNoUselessInheritdocFixer, PhpdocOrderByValueFixer, PhpdocOrderFixer, PhpdocReturnSelfReferenceFixer, PhpdocScalarFixer, PhpdocSeparationFixer, PhpdocSingleLineVarSpacingFixer, PhpdocSummaryFixer, PhpdocTagCasingFixer, PhpdocTagTypeFixer, PhpdocToCommentFixer, PhpdocToParamTypeFixer, PhpdocToPropertyTypeFixer, PhpdocToReturnTypeFixer, PhpdocTrimConsecutiveBlankLineSeparationFixer, PhpdocTrimFixer, PhpdocTypesFixer, PhpdocTypesOrderFixer, PhpdocVarAnnotationCorrectOrderFixer, PhpdocVarWithoutNameFixer.
+     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, GeneralPhpdocTagRenameFixer, NoBlankLinesAfterPhpdocFixer, NoEmptyPhpdocFixer, NoSuperfluousPhpdocTagsFixer, PhpdocAddMissingParamAnnotationFixer, PhpdocAnnotationWithoutDotFixer, PhpdocIndentFixer, PhpdocInlineTagNormalizerFixer, PhpdocLineSpanFixer, PhpdocNoAccessFixer, PhpdocNoAliasTagFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocNoUselessInheritdocFixer, PhpdocOrderByValueFixer, PhpdocOrderFixer, PhpdocParamOrderFixer, PhpdocReturnSelfReferenceFixer, PhpdocScalarFixer, PhpdocSeparationFixer, PhpdocSingleLineVarSpacingFixer, PhpdocSummaryFixer, PhpdocTagCasingFixer, PhpdocTagTypeFixer, PhpdocToCommentFixer, PhpdocToParamTypeFixer, PhpdocToPropertyTypeFixer, PhpdocToReturnTypeFixer, PhpdocTrimConsecutiveBlankLineSeparationFixer, PhpdocTrimFixer, PhpdocTypesFixer, PhpdocTypesOrderFixer, PhpdocVarAnnotationCorrectOrderFixer, PhpdocVarWithoutNameFixer.
      */
     public function getPriority(): int
     {
@@ -168,17 +171,11 @@ EOF;
         return -42;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(T_DOC_COMMENT);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         foreach ($tokens as $index => $token) {
@@ -196,27 +193,15 @@ EOF;
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         $tags = new FixerOptionBuilder('tags', 'The tags that should be aligned.');
         $tags
             ->setAllowedTypes(['array'])
-            ->setAllowedValues([new AllowedValueSubset(self::ALIGNABLE_TAGS)])
-            ->setDefault([
-                'method',
-                'param',
-                'property',
-                'return',
-                'throws',
-                'type',
-                'var',
-            ])
+            ->setDefault(self::DEFAULT_TAGS)
         ;
 
-        $align = new FixerOptionBuilder('align', 'Align comments');
+        $align = new FixerOptionBuilder('align', 'How comments should be aligned.');
         $align
             ->setAllowedTypes(['string'])
             ->setAllowedValues([self::ALIGN_LEFT, self::ALIGN_VERTICAL])
@@ -276,7 +261,8 @@ EOF;
             foreach ($items as $j => $item) {
                 if (null === $item['tag']) {
                     if ('@' === $item['desc'][0]) {
-                        $docBlock->getLine($current + $j)->setContent($item['indent'].' * '.$item['desc'].$lineEnding);
+                        $line = $item['indent'].' * '.$item['desc'];
+                        $docBlock->getLine($current + $j)->setContent($line.$lineEnding);
 
                         continue;
                     }
@@ -284,7 +270,7 @@ EOF;
                     $extraIndent = 2;
 
                     if (\in_array($currTag, self::TAGS_WITH_NAME, true) || \in_array($currTag, self::TAGS_WITH_METHOD_SIGNATURE, true)) {
-                        $extraIndent = 3;
+                        $extraIndent += $varMax + 1;
                     }
 
                     if ($hasStatic) {
@@ -295,13 +281,12 @@ EOF;
                         $item['indent']
                         .' *  '
                         .$this->getIndent(
-                            $tagMax + $hintMax + $varMax + $extraIndent,
+                            $tagMax + $hintMax + $extraIndent,
                             $this->getLeftAlignedDescriptionIndent($items, $j)
                         )
-                        .$item['desc']
-                        .$lineEnding;
+                        .$item['desc'];
 
-                    $docBlock->getLine($current + $j)->setContent($line);
+                    $docBlock->getLine($current + $j)->setContent($line.$lineEnding);
 
                     continue;
                 }
@@ -311,8 +296,7 @@ EOF;
                 $line =
                     $item['indent']
                     .' * @'
-                    .$item['tag']
-                ;
+                    .$item['tag'];
 
                 if ($hasStatic) {
                     $line .=
@@ -320,8 +304,7 @@ EOF;
                             $tagMax - \strlen($item['tag']) + 1,
                             $item['static'] ? 1 : 0
                         )
-                        .($item['static'] ?: $this->getIndent(6 /* \strlen('static') */, 0))
-                    ;
+                        .($item['static'] ?: $this->getIndent(6 /* \strlen('static') */, 0));
                     $hintVerticalAlignIndent = 1;
                 } else {
                     $hintVerticalAlignIndent = $tagMax - \strlen($item['tag']) + 1;
@@ -332,8 +315,7 @@ EOF;
                         $hintVerticalAlignIndent,
                         $item['hint'] ? 1 : 0
                     )
-                    .$item['hint']
-                ;
+                    .$item['hint'];
 
                 if (!empty($item['var'])) {
                     $line .=
@@ -341,23 +323,22 @@ EOF;
                         .$item['var']
                         .(
                             !empty($item['desc'])
-                            ? $this->getIndent($varMax - \strlen($item['var']) + 1).$item['desc'].$lineEnding
-                            : $lineEnding
-                        )
-                    ;
+                            ? $this->getIndent($varMax - \strlen($item['var']) + 1).$item['desc']
+                            : ''
+                        );
                 } elseif (!empty($item['desc'])) {
-                    $line .= $this->getIndent($hintMax - \strlen($item['hint']) + 1).$item['desc'].$lineEnding;
-                } else {
-                    $line .= $lineEnding;
+                    $line .= $this->getIndent($hintMax - \strlen($item['hint']) + 1).$item['desc'];
                 }
 
-                $docBlock->getLine($current + $j)->setContent($line);
+                $docBlock->getLine($current + $j)->setContent($line.$lineEnding);
             }
         }
     }
 
     /**
-     * @return null|array<string, null|string>
+     * @TODO Introduce proper DTO instead of an array
+     *
+     * @return null|array{indent: null|string, tag: null|string, hint: null|string, var: null|string, static: null|string, desc?: null|string}
      */
     private function getMatches(string $line, bool $matchCommentOnly = false): ?array
     {
@@ -412,7 +393,7 @@ EOF;
     }
 
     /**
-     * @param array[] $items
+     * @param non-empty-list<array{indent: null|string, tag: null|string, hint: null|string, var: null|string, static: null|string, desc?: null|string}> $items
      */
     private function getLeftAlignedDescriptionIndent(array $items, int $index): int
     {

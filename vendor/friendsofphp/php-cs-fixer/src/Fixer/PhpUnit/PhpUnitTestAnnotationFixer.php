@@ -36,17 +36,11 @@ use PhpCsFixer\Tokenizer\TokensAnalyzer;
  */
 final class PhpUnitTestAnnotationFixer extends AbstractPhpUnitFixer implements ConfigurableFixerInterface, WhitespacesAwareFixerInterface
 {
-    /**
-     * {@inheritdoc}
-     */
     public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -80,9 +74,6 @@ public function testItDoesSomething() {}}'.$this->whitespacesConfig->getLineEndi
         return 10;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyPhpUnitClassFix(Tokens $tokens, int $startIndex, int $endIndex): void
     {
         if ('annotation' === $this->configuration['style']) {
@@ -92,9 +83,6 @@ public function testItDoesSomething() {}}'.$this->whitespacesConfig->getLineEndi
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
@@ -185,8 +173,7 @@ public function testItDoesSomething() {}}'.$this->whitespacesConfig->getLineEndi
         // If the function doesn't have test in its name, and no doc block, it is not a test
         return
             $this->isPHPDoc($tokens, $docBlockIndex)
-            && str_contains($tokens[$docBlockIndex]->getContent(), '@test')
-        ;
+            && str_contains($tokens[$docBlockIndex]->getContent(), '@test');
     }
 
     private function isMethod(Tokens $tokens, int $index): bool
@@ -380,13 +367,13 @@ public function testItDoesSomething() {}}'.$this->whitespacesConfig->getLineEndi
      */
     private function findWhereDependsFunctionNameStarts(array $line): int
     {
-        $counter = \count($line);
+        $index = stripos(implode('', $line), '@depends') + 8;
 
-        do {
-            --$counter;
-        } while (' ' !== $line[$counter]);
+        while (' ' === $line[$index]) {
+            ++$index;
+        }
 
-        return $counter + 1;
+        return $index;
     }
 
     /**

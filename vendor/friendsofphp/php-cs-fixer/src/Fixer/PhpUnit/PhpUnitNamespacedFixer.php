@@ -23,6 +23,7 @@ use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Preg;
+use PhpCsFixer\Tokenizer\Analyzer\ClassyAnalyzer;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
 
@@ -48,9 +49,6 @@ final class PhpUnitNamespacedFixer extends AbstractFixer implements Configurable
      */
     private $classMap;
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         $codeSample = '<?php
@@ -77,25 +75,16 @@ final class MyTest extends \PHPUnit_Framework_TestCase
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(T_STRING);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function configure(array $configuration): void
     {
         parent::configure($configuration);
@@ -133,7 +122,7 @@ final class MyTest extends \PHPUnit_Framework_TestCase
                 'PHPUnit_Util_XML' => 'PHPUnit\Util\Xml',
             ];
         } elseif (PhpUnitTargetVersion::fulfills($this->configuration['target'], PhpUnitTargetVersion::VERSION_5_7)) {
-            $this->originalClassRegEx = '/^PHPUnit_Framework_TestCase|PHPUnit_Framework_Assert|PHPUnit_Framework_BaseTestListener|PHPUnit_Framework_TestListener$/i';
+            $this->originalClassRegEx = '/^PHPUnit_Framework_(TestCase|Assert|BaseTestListener|TestListener)+$/i';
             $this->classMap = [];
         } else {
             $this->originalClassRegEx = '/^PHPUnit_Framework_TestCase$/i';
@@ -141,9 +130,6 @@ final class MyTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $importedOriginalClassesMap = [];
@@ -163,8 +149,10 @@ final class MyTest extends \PHPUnit_Framework_TestCase
             }
 
             $originalClass = $tokens[$currIndex]->getContent();
+            $allowedReplacementScenarios = (new ClassyAnalyzer())->isClassyInvocation($tokens, $currIndex)
+                || $this->isImport($tokens, $currIndex);
 
-            if (1 !== Preg::match($this->originalClassRegEx, $originalClass)) {
+            if (!$allowedReplacementScenarios || 1 !== Preg::match($this->originalClassRegEx, $originalClass)) {
                 ++$currIndex;
 
                 continue;
@@ -191,9 +179,6 @@ final class MyTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
@@ -210,9 +195,10 @@ final class MyTest extends \PHPUnit_Framework_TestCase
         $delimiter = '_';
         $string = $originalClassName;
 
-        if (isset($this->classMap[$originalClassName])) {
+        $map = array_change_key_case($this->classMap);
+        if (isset($map[strtolower($originalClassName)])) {
             $delimiter = '\\';
-            $string = $this->classMap[$originalClassName];
+            $string = $map[strtolower($originalClassName)];
         }
 
         $parts = explode($delimiter, $string);
@@ -226,5 +212,16 @@ final class MyTest extends \PHPUnit_Framework_TestCase
         }
 
         return Tokens::fromArray($tokensArray);
+    }
+
+    private function isImport(Tokens $tokens, int $currIndex): bool
+    {
+        $prevIndex = $tokens->getPrevMeaningfulToken($currIndex);
+
+        if ($tokens[$prevIndex]->isGivenKind([T_NS_SEPARATOR])) {
+            $prevIndex = $tokens->getPrevMeaningfulToken($prevIndex);
+        }
+
+        return $tokens[$prevIndex]->isGivenKind([T_USE]);
     }
 }

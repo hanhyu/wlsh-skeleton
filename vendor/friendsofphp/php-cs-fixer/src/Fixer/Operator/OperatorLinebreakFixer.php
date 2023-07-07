@@ -45,9 +45,6 @@ final class OperatorLinebreakFixer extends AbstractFixer implements Configurable
      */
     private array $operators = [];
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -72,9 +69,6 @@ function foo() {
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function configure(array $configuration): void
     {
         parent::configure($configuration);
@@ -87,34 +81,25 @@ function foo() {
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
-            (new FixerOptionBuilder('only_booleans', 'whether to limit operators to only boolean ones'))
+            (new FixerOptionBuilder('only_booleans', 'Whether to limit operators to only boolean ones.'))
                 ->setAllowedTypes(['bool'])
                 ->setDefault(false)
                 ->getOption(),
-            (new FixerOptionBuilder('position', 'whether to place operators at the beginning or at the end of the line'))
+            (new FixerOptionBuilder('position', 'Whether to place operators at the beginning or at the end of the line.'))
                 ->setAllowedValues(['beginning', 'end'])
                 ->setDefault($this->position)
                 ->getOption(),
         ]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $referenceAnalyzer = new ReferenceAnalyzer();

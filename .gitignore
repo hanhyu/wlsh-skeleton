@@ -4,3 +4,5 @@
 *.DS_Store
 /Config/sendEmail.php
 /Config/environ.php
+/mysqlData/
+/redisData/

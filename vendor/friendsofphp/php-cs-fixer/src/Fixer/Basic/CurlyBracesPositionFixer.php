@@ -46,9 +46,6 @@ final class CurlyBracesPositionFixer extends AbstractFixer implements Configurab
      */
     public const SAME_LINE = 'same_line';
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -139,9 +136,6 @@ $bar = function () { $result = true;
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound('{');
@@ -150,16 +144,14 @@ $bar = function () { $result = true;
     /**
      * {@inheritdoc}
      *
-     * Must run after ControlStructureBracesFixer.
+     * Must run before SingleLineEmptyBodyFixer, StatementIndentationFixer.
+     * Must run after ControlStructureBracesFixer, NoMultipleStatementsPerLineFixer.
      */
     public function getPriority(): int
     {
-        return parent::getPriority();
+        return -2;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $classyTokens = Token::getClassyTokenKinds();
@@ -255,7 +247,7 @@ $bar = function () { $result = true;
                 $previousTokenIndex = $openBraceIndex;
                 do {
                     $previousTokenIndex = $tokens->getPrevMeaningfulToken($previousTokenIndex);
-                } while ($tokens[$previousTokenIndex]->isGivenKind([CT::T_TYPE_COLON, CT::T_NULLABLE_TYPE, T_STRING, T_NS_SEPARATOR, CT::T_ARRAY_TYPEHINT, T_STATIC, CT::T_TYPE_ALTERNATION, CT::T_TYPE_INTERSECTION]));
+                } while ($tokens[$previousTokenIndex]->isGivenKind([CT::T_TYPE_COLON, CT::T_NULLABLE_TYPE, T_STRING, T_NS_SEPARATOR, CT::T_ARRAY_TYPEHINT, T_STATIC, CT::T_TYPE_ALTERNATION, CT::T_TYPE_INTERSECTION, T_CALLABLE, CT::T_DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_OPEN, CT::T_DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_CLOSE]));
 
                 if ($tokens[$previousTokenIndex]->equals(')')) {
                     if ($tokens[--$previousTokenIndex]->isComment()) {
@@ -354,37 +346,34 @@ $bar = function () { $result = true;
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
-            (new FixerOptionBuilder('control_structures_opening_brace', 'the position of the opening brace of control structures body.'))
+            (new FixerOptionBuilder('control_structures_opening_brace', 'The position of the opening brace of control structures‘ body.'))
                 ->setAllowedValues([self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END, self::SAME_LINE])
                 ->setDefault(self::SAME_LINE)
                 ->getOption(),
-            (new FixerOptionBuilder('functions_opening_brace', 'the position of the opening brace of functions body.'))
+            (new FixerOptionBuilder('functions_opening_brace', 'The position of the opening brace of functions‘ body.'))
                 ->setAllowedValues([self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END, self::SAME_LINE])
                 ->setDefault(self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END)
                 ->getOption(),
-            (new FixerOptionBuilder('anonymous_functions_opening_brace', 'the position of the opening brace of anonymous functions body.'))
+            (new FixerOptionBuilder('anonymous_functions_opening_brace', 'The position of the opening brace of anonymous functions‘ body.'))
                 ->setAllowedValues([self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END, self::SAME_LINE])
                 ->setDefault(self::SAME_LINE)
                 ->getOption(),
-            (new FixerOptionBuilder('classes_opening_brace', 'the position of the opening brace of classes body.'))
+            (new FixerOptionBuilder('classes_opening_brace', 'The position of the opening brace of classes‘ body.'))
                 ->setAllowedValues([self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END, self::SAME_LINE])
                 ->setDefault(self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END)
                 ->getOption(),
-            (new FixerOptionBuilder('anonymous_classes_opening_brace', 'the position of the opening brace of anonymous classes body.'))
+            (new FixerOptionBuilder('anonymous_classes_opening_brace', 'The position of the opening brace of anonymous classes‘ body.'))
                 ->setAllowedValues([self::NEXT_LINE_UNLESS_NEWLINE_AT_SIGNATURE_END, self::SAME_LINE])
                 ->setDefault(self::SAME_LINE)
                 ->getOption(),
-            (new FixerOptionBuilder('allow_single_line_empty_anonymous_classes', 'allow anonymous classes to have opening and closing braces on the same line.'))
+            (new FixerOptionBuilder('allow_single_line_empty_anonymous_classes', 'Allow anonymous classes to have opening and closing braces on the same line.'))
                 ->setAllowedTypes(['bool'])
                 ->setDefault(true)
                 ->getOption(),
-            (new FixerOptionBuilder('allow_single_line_anonymous_functions', 'allow anonymous functions to have opening and closing braces on the same line.'))
+            (new FixerOptionBuilder('allow_single_line_anonymous_functions', 'Allow anonymous functions to have opening and closing braces on the same line.'))
                 ->setAllowedTypes(['bool'])
                 ->setDefault(true)
                 ->getOption(),

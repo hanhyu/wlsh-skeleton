@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d6adca00647b1ae9cb0f4c33e7169f07",
+    "content-hash": "25e908fec847b61259e958b773c939ad",
     "packages": [
         {
             "name": "doctrine/deprecations",
@@ -279,70 +279,6 @@
                 "search"
             ],
             "time": "2022-10-06T13:27:43+00:00"
-        },
-        {
-            "name": "envms/fluentpdo",
-            "version": "v2.2.4",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/envms/fluentpdo.git",
-                "reference": "1985e0e8406a56140f387bc9bec786b419cbeccc"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/envms/fluentpdo/zipball/1985e0e8406a56140f387bc9bec786b419cbeccc",
-                "reference": "1985e0e8406a56140f387bc9bec786b419cbeccc",
-                "shasum": "",
-                "mirrors": [
-                    {
-                        "url": "https://mirrors.aliyun.com/composer/dists/%package%/%reference%.%type%",
-                        "preferred": true
-                    }
-                ]
-            },
-            "require": {
-                "ext-pdo": "*",
-                "php": ">=7.1"
-            },
-            "require-dev": {
-                "envms/fluent-test": "^1.0",
-                "phpunit/phpunit": "^8.0"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Envms\\FluentPDO\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "Apache-2.0",
-                "GPL-2.0+"
-            ],
-            "authors": [
-                {
-                    "name": "envms",
-                    "homepage": "https://env.ms"
-                }
-            ],
-            "description": "FluentPDO is a quick and light PHP library for rapid query building. It features a smart join builder, which automatically creates table joins.",
-            "homepage": "https://github.com/envms/fluentpdo",
-            "keywords": [
-                "builder",
-                "database",
-                "db",
-                "dbal",
-                "fluent",
-                "mysql",
-                "oracle",
-                "pdo",
-                "query"
-            ],
-            "support": {
-                "issues": "https://github.com/envms/fluentpdo/issues",
-                "source": "https://github.com/envms/fluentpdo/tree/v2.2.4"
-            },
-            "time": "2022-01-27T21:49:44+00:00"
         },
         {
             "name": "ezimuel/guzzlestreams",
@@ -5690,6 +5626,7 @@
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.0",
+        "ext-swoole": ">=4.8.6",
         "ext-json": "*",
         "ext-redis": ">=5.3.2"
     },

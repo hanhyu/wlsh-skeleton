@@ -39,7 +39,7 @@ class UserDomain
             $data['curr_data'] = 0;
         }
         $data['where'] = [];
-        $chan = new Channel(2);
+        $chan          = new Channel(2);
         go(static function () use ($chan) { //获取总数
             try {
                 $count = SystemUserMysql::getInstance()->getListCount();
@@ -66,10 +66,6 @@ class UserDomain
         return $res;
     }
 
-    /**
-     * @throws ProgramException
-     * @throws Exception
-     */
     public function getInfoList(array $data): array
     {
         $res = [];
@@ -81,7 +77,7 @@ class UserDomain
         $data['where'] = [];
 
         $res['count'] = SystemUserMysql::getInstance()->getListCount();
-        $res['list'] = SystemUserMysql::getInstance()->getUserList($data);
+        $res['list']  = SystemUserMysql::getInstance()->getUserList($data);
         return $res;
     }
 
@@ -90,7 +86,7 @@ class UserDomain
         return SystemUserMysql::getInstance()->delUser($id);
     }
 
-    public function getUserById(int $id): array|bool
+    public function getUserById(int $id): array|false
     {
         return SystemUserMysql::getInstance()->getUser($id);
     }
@@ -153,16 +149,16 @@ class UserDomain
         if (0 === $res['count']) {
             $res['list'] = [];
         } else {
-            $list = SystemUserLogMysql::getInstance()->getList($data);
+            $list    = SystemUserLogMysql::getInstance()->getList($data);
             $arr_uid = array_column($list, 'user_id');
 
             $arr_name = SystemUserMysql::getInstance()->getNameById(array_unique($arr_uid));
-            $arr_let = array_column($arr_name, 'name', 'id');
+            $arr_let  = array_column($arr_name, 'name', 'id');
 
             if (is_iterable($list)) {
                 foreach ($list as $k => &$v) {
                     $list[$k]['user_name'] = $arr_let[$v['user_id']];
-                    $v['login_ip'] = long2ip((int)$v['login_ip']);
+                    $v['login_ip']         = long2ip((int)$v['login_ip']);
                 }
                 unset($v);
             } else {
@@ -196,7 +192,7 @@ class UserDomain
 
 
         $res['count'] = UserLogViewMysql::getInstance()->getListCount($data['where']);
-        $res['list'] = UserLogViewMysql::getInstance()->getList($data);
+        $res['list']  = UserLogViewMysql::getInstance()->getList($data);
 
         return $res;
     }

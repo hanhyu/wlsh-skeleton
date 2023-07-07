@@ -1,11 +1,11 @@
 <?php return array(
     'root' => array(
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'reference' => NULL,
+        'reference' => '2afa892f3ebca18f8d8168eb3d5ee836f2a3a0d2',
         'name' => 'wlsh/core',
         'dev' => true,
     ),
@@ -89,15 +89,6 @@
             'install_path' => __DIR__ . '/../elasticsearch/elasticsearch',
             'aliases' => array(),
             'reference' => '76c090601691373fb0aa48903c2a1faa6598eed8',
-            'dev_requirement' => false,
-        ),
-        'envms/fluentpdo' => array(
-            'pretty_version' => 'v2.2.4',
-            'version' => '2.2.4.0',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../envms/fluentpdo',
-            'aliases' => array(),
-            'reference' => '1985e0e8406a56140f387bc9bec786b419cbeccc',
             'dev_requirement' => false,
         ),
         'ezimuel/guzzlestreams' => array(
@@ -277,8 +268,8 @@
         'psr/log-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '1.0|2.0|3.0',
-                1 => '1.0.0',
+                0 => '1.0.0',
+                1 => '1.0|2.0|3.0',
             ),
         ),
         'react/promise' => array(
@@ -675,12 +666,12 @@
             'dev_requirement' => false,
         ),
         'wlsh/core' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
-            'reference' => NULL,
+            'reference' => '2afa892f3ebca18f8d8168eb3d5ee836f2a3a0d2',
             'dev_requirement' => false,
         ),
     ),

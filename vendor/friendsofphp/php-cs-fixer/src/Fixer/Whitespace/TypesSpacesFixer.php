@@ -40,9 +40,6 @@ final class TypesSpacesFixer extends AbstractFixer implements ConfigurableFixerI
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -65,23 +62,27 @@ final class TypesSpacesFixer extends AbstractFixer implements ConfigurableFixerI
 
     /**
      * {@inheritdoc}
+     *
+     * Must run after NullableTypeDeclarationFixer, OrderedTypesFixer.
      */
+    public function getPriority(): int
+    {
+        return -1;
+    }
+
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isAnyTokenKindsFound([CT::T_TYPE_ALTERNATION, CT::T_TYPE_INTERSECTION]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
-            (new FixerOptionBuilder('space', 'spacing to apply around union type and intersection type operators.'))
+            (new FixerOptionBuilder('space', 'Spacing to apply around union type and intersection type operators.'))
                 ->setAllowedValues(['none', 'single'])
                 ->setDefault('none')
                 ->getOption(),
-            (new FixerOptionBuilder('space_multiple_catch', 'spacing to apply around type operator when catching exceptions of multiple types, use `null` to follow the value configured for `space`.'))
+            (new FixerOptionBuilder('space_multiple_catch', 'Spacing to apply around type operator when catching exceptions of multiple types, use `null` to follow the value configured for `space`.'))
                 ->setAllowedValues(['none', 'single', null])
                 ->setDefault(null)
                 ->getOption(),

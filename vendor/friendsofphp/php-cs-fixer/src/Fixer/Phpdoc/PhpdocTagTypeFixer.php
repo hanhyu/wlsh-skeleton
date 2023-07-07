@@ -40,17 +40,11 @@ final class PhpdocTagTypeFixer extends AbstractFixer implements ConfigurableFixe
         )}
     )$/x';
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(T_DOC_COMMENT);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -78,9 +72,6 @@ final class PhpdocTagTypeFixer extends AbstractFixer implements ConfigurableFixe
         return 0;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         if (0 === \count($this->configuration['tags'])) {
@@ -142,13 +133,10 @@ final class PhpdocTagTypeFixer extends AbstractFixer implements ConfigurableFixe
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
-            (new FixerOptionBuilder('tags', 'The list of tags to fix'))
+            (new FixerOptionBuilder('tags', 'The list of tags to fix.'))
                 ->setAllowedTypes(['array'])
                 ->setAllowedValues([static function (array $value): bool {
                     foreach ($value as $type) {
@@ -202,8 +190,7 @@ final class PhpdocTagTypeFixer extends AbstractFixer implements ConfigurableFixe
     {
         return
             Preg::match('/(^|\R)\h*[^@\s]\N*/', $this->cleanComment($parts[$index - 1]))
-            || Preg::match('/^.*?\R\s*[^@\s]/', $this->cleanComment($parts[$index + 1]))
-        ;
+            || Preg::match('/^.*?\R\s*[^@\s]/', $this->cleanComment($parts[$index + 1]));
     }
 
     private function cleanComment(string $comment): string

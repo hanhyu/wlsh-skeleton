@@ -65,12 +65,12 @@ final class FunctionsAnalyzer
             return false;
         }
 
-        if ($previousIsNamespaceSeparator) {
-            return true;
-        }
-
         if ($tokens[$tokens->getNextMeaningfulToken($nextIndex)]->isGivenKind(CT::T_FIRST_CLASS_CALLABLE)) {
             return false;
+        }
+
+        if ($previousIsNamespaceSeparator) {
+            return true;
         }
 
         if ($tokens->isChanged() || $tokens->getCodeHash() !== $this->functionsAnalysis['tokens']) {
@@ -78,14 +78,11 @@ final class FunctionsAnalyzer
         }
 
         // figure out in which namespace we are
-        $namespaceAnalyzer = new NamespacesAnalyzer();
-
-        $declarations = $namespaceAnalyzer->getDeclarations($tokens);
         $scopeStartIndex = 0;
         $scopeEndIndex = \count($tokens) - 1;
         $inGlobalNamespace = false;
 
-        foreach ($declarations as $declaration) {
+        foreach ($tokens->getNamespaceDeclarations() as $declaration) {
             $scopeStartIndex = $declaration->getScopeStartIndex();
             $scopeEndIndex = $declaration->getScopeEndIndex();
 

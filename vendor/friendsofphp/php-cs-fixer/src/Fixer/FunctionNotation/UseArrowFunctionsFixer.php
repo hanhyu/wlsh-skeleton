@@ -29,9 +29,6 @@ use PhpCsFixer\Tokenizer\TokensAnalyzer;
  */
 final class UseArrowFunctionsFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -54,17 +51,11 @@ SAMPLE
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isAllTokenKindsFound([T_FUNCTION, T_RETURN]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isRisky(): bool
     {
         return true;
@@ -72,7 +63,14 @@ SAMPLE
 
     /**
      * {@inheritdoc}
+     *
+     * Must run before FunctionDeclarationFixer.
      */
+    public function getPriority(): int
+    {
+        return 32;
+    }
+
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         $analyzer = new TokensAnalyzer($tokens);

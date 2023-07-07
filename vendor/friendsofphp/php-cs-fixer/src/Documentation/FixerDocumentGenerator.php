@@ -156,16 +156,16 @@ RST;
                     $allowedKind = 'Allowed values';
                     $allowed = array_map(static function ($value): string {
                         return $value instanceof AllowedValueSubset
-                            ? 'a subset of ``'.HelpCommand::toString($value->getAllowedValues()).'``'
-                            : '``'.HelpCommand::toString($value).'``';
+                            ? 'a subset of ``'.Utils::toString($value->getAllowedValues()).'``'
+                            : '``'.Utils::toString($value).'``';
                     }, $allowed);
                 }
 
-                $allowed = implode(', ', $allowed);
+                $allowed = Utils::naturalLanguageJoin($allowed, '');
                 $optionInfo .= "\n\n{$allowedKind}: {$allowed}";
 
                 if ($option->hasDefault()) {
-                    $default = HelpCommand::toString($option->getDefault());
+                    $default = Utils::toString($option->getDefault());
                     $optionInfo .= "\n\nDefault value: ``{$default}``";
                 } else {
                     $optionInfo .= "\n\nThis option is required.";
@@ -196,7 +196,7 @@ RST;
                     } else {
                         $doc .= sprintf(
                             "\n\nWith configuration: ``%s``.",
-                            HelpCommand::toString($sample->getConfiguration())
+                            Utils::toString($sample->getConfiguration())
                         );
                     }
                 }
@@ -238,7 +238,7 @@ RST;
 RST;
 
                 if (null !== $config) {
-                    $doc .= " with the config below:\n\n  ``".HelpCommand::toString($config).'``';
+                    $doc .= " with the config below:\n\n  ``".Utils::toString($config).'``';
                 } elseif ($fixer instanceof ConfigurableFixerInterface) {
                     $doc .= ' with the default config.';
                 } else {
@@ -298,8 +298,7 @@ RST;
 
             $attributes = 0 === \count($attributes)
                 ? ''
-                : ' *('.implode(', ', $attributes).')*'
-            ;
+                : ' *('.implode(', ', $attributes).')*';
 
             $summary = str_replace('`', '``', $fixer->getDefinition()->getSummary());
 
@@ -342,8 +341,7 @@ RST;
         $tokens = Tokens::fromCode($old);
         $file = $sample instanceof FileSpecificCodeSampleInterface
             ? $sample->getSplFileInfo()
-            : new StdinFileInfo()
-        ;
+            : new StdinFileInfo();
 
         if ($fixer instanceof ConfigurableFixerInterface) {
             $fixer->configure($sample->getConfiguration() ?? []);

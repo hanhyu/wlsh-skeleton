@@ -19,10 +19,12 @@ use PhpCsFixer\ConfigInterface;
 use PhpCsFixer\ConfigurationException\InvalidConfigurationException;
 use PhpCsFixer\Console\ConfigurationResolver;
 use PhpCsFixer\Console\Output\ErrorOutput;
-use PhpCsFixer\Console\Output\NullOutput;
-use PhpCsFixer\Console\Output\ProcessOutput;
+use PhpCsFixer\Console\Output\OutputContext;
+use PhpCsFixer\Console\Output\Progress\ProgressOutputFactory;
+use PhpCsFixer\Console\Output\Progress\ProgressOutputType;
 use PhpCsFixer\Console\Report\FixReport\ReportSummary;
 use PhpCsFixer\Error\ErrorsManager;
+use PhpCsFixer\FixerFileProcessedEvent;
 use PhpCsFixer\Runner\Runner;
 use PhpCsFixer\ToolInfoInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -61,6 +63,8 @@ final class FixCommand extends Command
 
     private ToolInfoInterface $toolInfo;
 
+    private ProgressOutputFactory $progressOutputFactory;
+
     public function __construct(ToolInfoInterface $toolInfo)
     {
         parent::__construct();
@@ -70,6 +74,7 @@ final class FixCommand extends Command
         $this->stopwatch = new Stopwatch();
         $this->defaultConfig = new Config();
         $this->toolInfo = $toolInfo;
+        $this->progressOutputFactory = new ProgressOutputFactory();
     }
 
     /**
@@ -97,6 +102,7 @@ The <comment>--format</comment> option for the output format. Supported formats 
 NOTE: the output for the following formats are generated in accordance with schemas
 
 * `checkstyle` follows the common `"checkstyle" XML schema </doc/schemas/fix/checkstyle.xsd>`_
+* `gitlab` follows the `codeclimate JSON schema </doc/schemas/fix/codeclimate.json>`_
 * `json` follows the `own JSON schema </doc/schemas/fix/schema.json>`_
 * `junit` follows the `JUnit XML schema from Jenkins </doc/schemas/fix/junit-10.xsd>`_
 * `xml` follows the `own XML schema </doc/schemas/fix/xml.xsd>`_
@@ -182,13 +188,9 @@ Exit code of the fix command is built using following bit flags:
 * 32 - Configuration error of a Fixer.
 * 64 - Exception raised within the application.
 
-EOF
-        ;
+EOF;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
@@ -212,9 +214,6 @@ EOF
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $verbosity = $output->getVerbosity();
@@ -251,8 +250,7 @@ EOF
 
         $stdErr = $output instanceof ConsoleOutputInterface
             ? $output->getErrorOutput()
-            : ('txt' === $reporter->getFormat() ? $output : null)
-        ;
+            : ('txt' === $reporter->getFormat() ? $output : null);
 
         if (null !== $stdErr) {
             if (OutputInterface::VERBOSITY_VERBOSE <= $verbosity) {
@@ -271,7 +269,6 @@ EOF
             }
         }
 
-        $progressType = $resolver->getProgress();
         $finder = new \ArrayIterator(iterator_to_array($resolver->getFinder()));
 
         if (null !== $stdErr && $resolver->configFinderIsOverridden()) {
@@ -280,22 +277,21 @@ EOF
             );
         }
 
-        if ('none' === $progressType || null === $stdErr) {
-            $progressOutput = new NullOutput();
-        } else {
-            $progressOutput = new ProcessOutput(
+        $progressType = $resolver->getProgressType();
+        $progressOutput = $this->progressOutputFactory->create(
+            $progressType,
+            new OutputContext(
                 $stdErr,
-                $this->eventDispatcher,
                 (new Terminal())->getWidth(),
                 \count($finder)
-            );
-        }
+            )
+        );
 
         $runner = new Runner(
             $finder,
             $resolver->getFixers(),
             $resolver->getDiffer(),
-            'none' !== $progressType ? $this->eventDispatcher : null,
+            ProgressOutputType::NONE !== $progressType ? $this->eventDispatcher : null,
             $this->errorsManager,
             $resolver->getLinter(),
             $resolver->isDryRun(),
@@ -304,9 +300,11 @@ EOF
             $resolver->shouldStopOnViolation()
         );
 
+        $this->eventDispatcher->addListener(FixerFileProcessedEvent::NAME, [$progressOutput, 'onFixerFileProcessed']);
         $this->stopwatch->start('fixFiles');
         $changed = $runner->fix();
         $this->stopwatch->stop('fixFiles');
+        $this->eventDispatcher->removeListener(FixerFileProcessedEvent::NAME, [$progressOutput, 'onFixerFileProcessed']);
 
         $progressOutput->printLegend();
 
@@ -324,8 +322,7 @@ EOF
 
         $output->isDecorated()
             ? $output->write($reporter->generate($reportSummary))
-            : $output->write($reporter->generate($reportSummary), false, OutputInterface::OUTPUT_RAW)
-        ;
+            : $output->write($reporter->generate($reportSummary), false, OutputInterface::OUTPUT_RAW);
 
         $invalidErrors = $this->errorsManager->getInvalidErrors();
         $exceptionErrors = $this->errorsManager->getExceptionErrors();

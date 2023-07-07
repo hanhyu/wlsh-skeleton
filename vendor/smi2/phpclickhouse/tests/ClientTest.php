@@ -30,6 +30,7 @@ class ClientTest extends TestCase
 
         $this->client->enableHttpCompression(true);
         $this->client->ping();
+        $this->client->setReadOnlyUser(false);
     }
 
     /**
@@ -714,6 +715,12 @@ class ClientTest extends TestCase
         $this->assertEquals(2, $state2->fetchOne('ping'));
     }
 
+    public function testPartsInfo()
+    {
+        $this->create_table_summing_url_views();
+        $this->insert_data_table_summing_url_views();
+        $this->assertIsArray($this->client->partitions('summing_url_views'));
+    }
     /**
      *
      */

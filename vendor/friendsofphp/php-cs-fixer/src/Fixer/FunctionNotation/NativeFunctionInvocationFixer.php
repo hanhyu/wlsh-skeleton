@@ -24,9 +24,9 @@ use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Tokenizer\Analyzer\Analysis\NamespaceAnalysis;
 use PhpCsFixer\Tokenizer\Analyzer\FunctionsAnalyzer;
-use PhpCsFixer\Tokenizer\Analyzer\NamespacesAnalyzer;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
+use PhpCsFixer\Utils;
 use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
 
 /**
@@ -68,9 +68,6 @@ final class NativeFunctionInvocationFixer extends AbstractFixer implements Confi
         $this->functionFilter = $this->getFunctionFilter();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -174,25 +171,16 @@ $c = get_class($d);
         return 1;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(T_STRING);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         if ('all' === $this->configuration['scope']) {
@@ -201,7 +189,7 @@ $c = get_class($d);
             return;
         }
 
-        $namespaces = (new NamespacesAnalyzer())->getDeclarations($tokens);
+        $namespaces = $tokens->getNamespaceDeclarations();
 
         // 'scope' is 'namespaced' here
         /** @var NamespaceAnalysis $namespace */
@@ -210,9 +198,6 @@ $c = get_class($d);
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
@@ -250,7 +235,7 @@ $c = get_class($d);
                         ];
 
                         if (str_starts_with($functionName, '@') && !\in_array($functionName, $sets, true)) {
-                            throw new InvalidOptionsException(sprintf('Unknown set "%s", known sets are "%s".', $functionName, implode('", "', $sets)));
+                            throw new InvalidOptionsException(sprintf('Unknown set "%s", known sets are %s.', $functionName, Utils::naturalLanguageJoin($sets)));
                         }
                     }
 

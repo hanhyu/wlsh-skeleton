@@ -13,8 +13,8 @@
     }
   ],
   "require": {
-    "php": ">=8.0",
-    "wlsh/core": "^1.1"
+    "php": ">=8.1",
+    "wlsh/core": "^1.2"
   },
   "autoload": {
     "psr-4": {

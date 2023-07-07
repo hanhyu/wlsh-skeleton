@@ -24,4 +24,9 @@ class MenuDomain
         return $res;
     }
 
+    public function getInfo(): array
+    {
+        return SystemMenuMysql::getInstance()->getMenuInfo();
+    }
+
 }

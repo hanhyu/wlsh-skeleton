@@ -41,9 +41,6 @@ final class StatementIndentationFixer extends AbstractFixer implements Whitespac
         $this->bracesFixerCompatibility = $bracesFixerCompatibility;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -67,16 +64,13 @@ else {
      * {@inheritdoc}
      *
      * Must run before HeredocIndentationFixer.
-     * Must run after ClassAttributesSeparationFixer.
+     * Must run after ClassAttributesSeparationFixer, CurlyBracesPositionFixer.
      */
     public function getPriority(): int
     {
-        return parent::getPriority();
+        return -3;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return true;
@@ -98,7 +92,6 @@ else {
             T_CASE,
             T_DEFAULT,
             T_TRY,
-            T_FUNCTION,
             T_CLASS,
             T_INTERFACE,
             T_TRAIT,
@@ -124,6 +117,20 @@ else {
             0,
             $this->extractIndent($this->computeNewLineContent($tokens, 0)),
         );
+
+        $methodModifierTokens = [
+            //  https://github.com/php/php-langspec/blob/master/spec/19-grammar.md#grammar-visibility-modifier
+            T_PUBLIC,
+            T_PROTECTED,
+            T_PRIVATE,
+            //  https://github.com/php/php-langspec/blob/master/spec/19-grammar.md#grammar-static-modifier
+            T_STATIC,
+            //  https://github.com/php/php-langspec/blob/master/spec/19-grammar.md#grammar-class-modifier
+            T_ABSTRACT,
+            T_FINAL,
+        ];
+
+        $methodModifierIndents = [];
 
         /**
          * @var list<array{
@@ -255,14 +262,56 @@ else {
                 continue;
             }
 
+            if ($token->isGivenKind($methodModifierTokens)) {
+                $methodModifierIndents[$index] = $lastIndent;
+
+                continue;
+            }
+
+            if ($token->isGivenKind(T_FUNCTION)) {
+                $x = $tokens->getPrevMeaningfulToken($index);
+                while (
+                    null !== $x
+                    && $tokens[$x]->isGivenKind($methodModifierTokens)
+                    && \array_key_exists($x, $methodModifierIndents)
+                ) {
+                    $lastIndent = $methodModifierIndents[$x];
+                    $x = $tokens->getPrevMeaningfulToken($x);
+                }
+
+                $methodModifierIndents = [];
+
+                for ($endIndex = $index + 1, $max = \count($tokens); $endIndex < $max; ++$endIndex) {
+                    if ($tokens[$endIndex]->equals('(')) {
+                        $endIndex = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_PARENTHESIS_BRACE, $endIndex);
+
+                        continue;
+                    }
+
+                    if ($tokens[$endIndex]->equalsAny(['{', ';'])) {
+                        break;
+                    }
+                }
+
+                $scopes[] = [
+                    'type' => 'block_signature',
+                    'skip' => false,
+                    'end_index' => $endIndex,
+                    'end_index_inclusive' => true,
+                    'initial_indent' => $this->getLineIndentationWithBracesCompatibility($tokens, $index, $lastIndent),
+                    'is_indented_block' => $token->isGivenKind([T_EXTENDS, T_IMPLEMENTS]),
+                ];
+
+                continue;
+            }
+
             if (
                 $token->isWhitespace()
                 || ($index > 0 && $tokens[$index - 1]->isGivenKind(T_OPEN_TAG))
             ) {
                 $previousOpenTagContent = $tokens[$index - 1]->isGivenKind(T_OPEN_TAG)
                     ? Preg::replace('/\S/', '', $tokens[$index - 1]->getContent())
-                    : ''
-                ;
+                    : '';
 
                 $content = $previousOpenTagContent.($token->isWhitespace() ? $token->getContent() : '');
 
@@ -305,19 +354,17 @@ else {
                             }
                         }
 
-                        if (!$this->isCommentForControlSructureContinuation($tokens, $index + 1)) {
-                            $endIndex = $scopes[$currentScope]['end_index'];
+                        $endIndex = $scopes[$currentScope]['end_index'];
 
-                            if (!$scopes[$currentScope]['end_index_inclusive']) {
-                                ++$endIndex;
-                            }
+                        if (!$scopes[$currentScope]['end_index_inclusive']) {
+                            ++$endIndex;
+                        }
 
-                            if (
-                                (null !== $firstNonWhitespaceTokenIndex && $firstNonWhitespaceTokenIndex < $endIndex)
-                                || (null !== $nextNewlineIndex && $nextNewlineIndex < $endIndex)
-                            ) {
-                                $indent = true;
-                            }
+                        if (
+                            (null !== $firstNonWhitespaceTokenIndex && $firstNonWhitespaceTokenIndex < $endIndex)
+                            || (null !== $nextNewlineIndex && $nextNewlineIndex < $endIndex)
+                        ) {
+                            $indent = true;
                         }
                     }
 
@@ -495,36 +542,6 @@ else {
         }
 
         return $regularIndent;
-    }
-
-    private function isCommentForControlSructureContinuation(Tokens $tokens, int $index): bool
-    {
-        if (!isset($tokens[$index], $tokens[$index + 1])) {
-            return false;
-        }
-
-        if (!$tokens[$index]->isComment() || 1 !== Preg::match('~^(//|#)~', $tokens[$index]->getContent())) {
-            return false;
-        }
-
-        if (!$tokens[$index + 1]->isWhitespace() || 1 !== Preg::match('/\R/', $tokens[$index + 1]->getContent())) {
-            return false;
-        }
-
-        $prevIndex = $tokens->getPrevMeaningfulToken($index);
-        if (null !== $prevIndex && $tokens[$prevIndex]->equals('{')) {
-            return false;
-        }
-
-        $index = $tokens->getNextMeaningfulToken($index + 1);
-
-        if (null === $index || !$tokens[$index]->equals('}')) {
-            return false;
-        }
-
-        $index = $tokens->getNextMeaningfulToken($index);
-
-        return null !== $index && $tokens[$index]->isGivenKind([T_ELSE, T_ELSEIF]);
     }
 
     /**

@@ -21,7 +21,6 @@
     "symfony/mailer": "6.0.3",
     "webgeeker/validation": "0.5.2",
     "elasticsearch/elasticsearch": "^7.11.x-dev",
-    "envms/fluentpdo": "2.2.4",
     "smi2/phpclickhouse": "^1.4"
   },
   "repositories": {
@@ -53,7 +52,6 @@
     "mongodb/mongodb": "1.8.0",
     "elasticsearch/elasticsearch": "^7.11.x-dev",
     "longlang/phpkafka": "1.2.1",
-    "envms/fluentpdo": "2.2.4",
     "smi2/phpclickhouse": "^1.4"
   }
 }

@@ -2,9 +2,9 @@
 declare(strict_types=1);
 
 
-use App\Domain\System\MenuDomain;
-use App\Domain\System\UserDomain;
-use App\Models\Redis\UserRedis;
+use Domain\System\MenuDomain;
+use Domain\System\UserDomain;
+use Models\Redis\UserRedis;
 use PHPUnit\Framework\TestCase;
 
 class SystemTest extends TestCase

@@ -2,7 +2,6 @@
 
 namespace Wlsh;
 
-use Envms\FluentPDO\Query;
 use Swoole\Coroutine;
 
 /**
@@ -45,16 +44,15 @@ abstract class AbstractPdo implements ModelInterface
      * Date: 2021/1/30
      * Time: 上午10:19
      *
-     * @return Query
-     * @throws ProgramException
+     * @return Db
      */
-    public static function getDb(): Query
+    public static function getDb(): Db
     {
         $_class_name = static::class;
         $_cid = Coroutine::getCid();
         $query = static::$instance[$_class_name]['query'][$_cid] ?? '';
         if (empty($query)) {
-            $query = static::$instance[$_class_name]['query'][$_cid] = new Query(PdoPool::getInstance(static::setDb())->get());
+            $query = static::$instance[$_class_name]['query'][$_cid] = new Db(PdoPool::getInstance(static::setDb())->get());
         }
 
         defer(static function () use ($_class_name, $_cid) {

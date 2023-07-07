@@ -68,9 +68,6 @@ final class OrderedInterfacesFixer extends AbstractFixer implements Configurable
         self::ORDER_LENGTH,
     ];
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -98,18 +95,12 @@ final class OrderedInterfacesFixer extends AbstractFixer implements Configurable
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(T_IMPLEMENTS)
             || $tokens->isAllTokenKindsFound([T_INTERFACE, T_EXTENDS]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         foreach ($tokens as $index => $token) {
@@ -195,17 +186,14 @@ final class OrderedInterfacesFixer extends AbstractFixer implements Configurable
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
-            (new FixerOptionBuilder(self::OPTION_ORDER, 'How the interfaces should be ordered'))
+            (new FixerOptionBuilder(self::OPTION_ORDER, 'How the interfaces should be ordered.'))
                 ->setAllowedValues(self::SUPPORTED_ORDER_OPTIONS)
                 ->setDefault(self::ORDER_ALPHA)
                 ->getOption(),
-            (new FixerOptionBuilder(self::OPTION_DIRECTION, 'Which direction the interfaces should be ordered'))
+            (new FixerOptionBuilder(self::OPTION_DIRECTION, 'Which direction the interfaces should be ordered.'))
                 ->setAllowedValues(self::SUPPORTED_DIRECTION_OPTIONS)
                 ->setDefault(self::DIRECTION_ASCEND)
                 ->getOption(),

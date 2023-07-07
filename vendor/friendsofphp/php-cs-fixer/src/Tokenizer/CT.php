@@ -54,6 +54,10 @@ final class CT
     public const T_NAMED_ARGUMENT_COLON = 10033;
     public const T_FIRST_CLASS_CALLABLE = 10034;
     public const T_TYPE_INTERSECTION = 10035;
+    public const T_DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_OPEN = 10036;
+    public const T_DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_CLOSE = 10037;
+    public const T_DYNAMIC_CLASS_CONSTANT_FETCH_CURLY_BRACE_OPEN = 10038;
+    public const T_DYNAMIC_CLASS_CONSTANT_FETCH_CURLY_BRACE_CLOSE = 10039;
 
     private function __construct()
     {

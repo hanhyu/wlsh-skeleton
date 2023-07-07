@@ -26,9 +26,6 @@ use PhpCsFixer\Tokenizer\Tokens;
  */
 final class CompactNullableTypehintFixer extends AbstractFixer
 {
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -42,23 +39,18 @@ final class CompactNullableTypehintFixer extends AbstractFixer
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(CT::T_NULLABLE_TYPE);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         static $typehintKinds = [
             CT::T_ARRAY_TYPEHINT,
             T_CALLABLE,
             T_NS_SEPARATOR,
+            T_STATIC,
             T_STRING,
         ];
 
