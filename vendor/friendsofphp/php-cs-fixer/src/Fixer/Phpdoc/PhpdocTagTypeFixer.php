@@ -81,9 +81,7 @@ final class PhpdocTagTypeFixer extends AbstractFixer implements ConfigurableFixe
         $regularExpression = sprintf(
             '/({?@(?:%s).*?(?:(?=\s\*\/)|(?=\n)}?))/i',
             implode('|', array_map(
-                static function (string $tag): string {
-                    return preg_quote($tag, '/');
-                },
+                static fn (string $tag): string => preg_quote($tag, '/'),
                 array_keys($this->configuration['tags'])
             ))
         );
@@ -170,7 +168,7 @@ final class PhpdocTagTypeFixer extends AbstractFixer implements ConfigurableFixe
                     'var' => 'annotation',
                     'version' => 'annotation',
                 ])
-                ->setNormalizer(static function (Options $options, $value): array {
+                ->setNormalizer(static function (Options $options, array $value): array {
                     $normalized = [];
 
                     foreach ($value as $tag => $type) {

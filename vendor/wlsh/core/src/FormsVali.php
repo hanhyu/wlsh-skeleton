@@ -2,8 +2,6 @@
 
 namespace Wlsh;
 
-use WebGeeker\Validation\Validation;
-
 /**
  * 国际化
  *
@@ -24,7 +22,7 @@ use WebGeeker\Validation\Validation;
 class FormsVali extends Validation
 {
     // “错误提示信息模版”翻译对照表
-    protected static $langCode2ErrorTemplates = [
+    protected static array $langCode2ErrorTemplates = [
         //繁体中文
         'zh-tw' => [
             'Int'            => '“{{param}}”必須是整數',
@@ -754,7 +752,7 @@ class FormsVali extends Validation
     ];
 
     // 文本翻译对照表
-    protected static $langCodeToTranslations = [
+    protected static array $langCodeToTranslations = [
         'zh-tw' => [
             '变量'      => '變量', // 🌙
             '变量必须是整数' => '變量必須是整數', // ⭐

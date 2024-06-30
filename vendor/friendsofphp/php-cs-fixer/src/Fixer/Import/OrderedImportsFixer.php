@@ -36,6 +36,14 @@ use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
  * @author Dariusz Rumiński <dariusz.ruminski@gmail.com>
  * @author Darius Matulionis <darius@matulionis.lt>
  * @author Adriano Pilger <adriano.pilger@gmail.com>
+ *
+ * @phpstan-type _UseImportInfo array{
+ *  namespace: non-empty-string,
+ *  startIndex: int,
+ *  endIndex: int,
+ *  importType: self::IMPORT_TYPE_*,
+ *  group: bool,
+ * }
  */
 final class OrderedImportsFixer extends AbstractFixer implements ConfigurableFixerInterface, WhitespacesAwareFixerInterface
 {
@@ -72,14 +80,14 @@ final class OrderedImportsFixer extends AbstractFixer implements ConfigurableFix
     /**
      * Array of supported sort types in configuration.
      *
-     * @var string[]
+     * @var list<string>
      */
     private const SUPPORTED_SORT_TYPES = [self::IMPORT_TYPE_CLASS, self::IMPORT_TYPE_CONST, self::IMPORT_TYPE_FUNCTION];
 
     /**
      * Array of supported sort algorithms in configuration.
      *
-     * @var string[]
+     * @var list<string>
      */
     private const SUPPORTED_SORT_ALGORITHMS = [self::SORT_ALPHA, self::SORT_LENGTH, self::SORT_NONE];
 
@@ -90,6 +98,10 @@ final class OrderedImportsFixer extends AbstractFixer implements ConfigurableFix
             [
                 new CodeSample(
                     "<?php\nuse function AAC;\nuse const AAB;\nuse AAA;\n"
+                ),
+                new CodeSample(
+                    "<?php\nuse function Aaa;\nuse const AA;\n",
+                    ['case_sensitive' => true]
                 ),
                 new CodeSample(
                     '<?php
@@ -171,7 +183,7 @@ use Bar;
      * {@inheritdoc}
      *
      * Must run before BlankLineBetweenImportGroupsFixer.
-     * Must run after GlobalNamespaceImportFixer, NoLeadingImportSlashFixer.
+     * Must run after FullyQualifiedStrictTypesFixer, GlobalNamespaceImportFixer, NoLeadingImportSlashFixer.
      */
     public function getPriority(): int
     {
@@ -263,16 +275,18 @@ use Bar;
                 }])
                 ->setDefault(null) // @TODO set to ['class', 'function', 'const'] on 4.0
                 ->getOption(),
+            (new FixerOptionBuilder('case_sensitive', 'Whether the sorting should be case sensitive.'))
+                ->setAllowedTypes(['bool'])
+                ->setDefault(false)
+                ->getOption(),
         ]);
     }
 
     /**
      * This method is used for sorting the uses in a namespace.
      *
-     * @param array<string, bool|int|string> $first
-     * @param array<string, bool|int|string> $second
-     *
-     * @internal
+     * @param _UseImportInfo $first
+     * @param _UseImportInfo $second
      */
     private function sortAlphabetically(array $first, array $second): int
     {
@@ -280,16 +294,16 @@ use Bar;
         $firstNamespace = str_replace('\\', ' ', $this->prepareNamespace($first['namespace']));
         $secondNamespace = str_replace('\\', ' ', $this->prepareNamespace($second['namespace']));
 
-        return strcasecmp($firstNamespace, $secondNamespace);
+        return true === $this->configuration['case_sensitive']
+            ? $firstNamespace <=> $secondNamespace
+            : strcasecmp($firstNamespace, $secondNamespace);
     }
 
     /**
      * This method is used for sorting the uses statements in a namespace by length.
      *
-     * @param array<string, bool|int|string> $first
-     * @param array<string, bool|int|string> $second
-     *
-     * @internal
+     * @param _UseImportInfo $first
+     * @param _UseImportInfo $second
      */
     private function sortByLength(array $first, array $second): int
     {
@@ -300,7 +314,9 @@ use Bar;
         $secondNamespaceLength = \strlen($secondNamespace);
 
         if ($firstNamespaceLength === $secondNamespaceLength) {
-            $sortResult = strcasecmp($firstNamespace, $secondNamespace);
+            $sortResult = true === $this->configuration['case_sensitive']
+                ? $firstNamespace <=> $secondNamespace
+                : strcasecmp($firstNamespace, $secondNamespace);
         } else {
             $sortResult = $firstNamespaceLength > $secondNamespaceLength ? 1 : -1;
         }
@@ -315,6 +331,8 @@ use Bar;
 
     /**
      * @param list<int> $uses
+     *
+     * @return array<int, _UseImportInfo>
      */
     private function getNewOrder(array $uses, Tokens $tokens): array
     {
@@ -474,7 +492,7 @@ use Bar;
             $sortedGroups = [];
 
             foreach ($this->configuration['imports_order'] as $type) {
-                if (isset($groupedByTypes[$type]) && !empty($groupedByTypes[$type])) {
+                if (isset($groupedByTypes[$type]) && [] !== $groupedByTypes[$type]) {
                     foreach ($groupedByTypes[$type] as $startIndex => $item) {
                         $sortedGroups[$startIndex] = $item;
                     }
@@ -499,27 +517,9 @@ use Bar;
     }
 
     /**
-     * @param array<
-     *     int,
-     *     array{
-     *         namespace: string,
-     *         startIndex: int,
-     *         endIndex: int,
-     *         importType: string,
-     *         group: bool,
-     *     }
-     * > $indices
+     * @param array<int, _UseImportInfo> $indices
      *
-     * @return array<
-     *     int,
-     *     array{
-     *         namespace: string,
-     *         startIndex: int,
-     *         endIndex: int,
-     *         importType: string,
-     *         group: bool,
-     *     }
-     * >
+     * @return array<int, _UseImportInfo>
      */
     private function sortByAlgorithm(array $indices): array
     {
@@ -533,13 +533,7 @@ use Bar;
     }
 
     /**
-     * @param array<int, array{
-     *     namespace: string,
-     *     startIndex: int,
-     *     endIndex: int,
-     *     importType: string,
-     *     group: bool,
-     * }> $usesOrder
+     * @param array<int, _UseImportInfo> $usesOrder
      */
     private function setNewOrder(Tokens $tokens, array $usesOrder): void
     {
@@ -557,8 +551,16 @@ use Bar;
                 $use['namespace']
             );
 
+            $numberOfInitialTokensToClear = 3; // clear `<?php use `
+            if (self::IMPORT_TYPE_CLASS !== $use['importType']) {
+                $prevIndex = $tokens->getPrevMeaningfulToken($index);
+                if ($tokens[$prevIndex]->equals(',')) {
+                    $numberOfInitialTokensToClear = 5; // clear `<?php use const ` or `<?php use function `
+                }
+            }
+
             $declarationTokens = Tokens::fromCode($code);
-            $declarationTokens->clearRange(0, 2); // clear `<?php use `
+            $declarationTokens->clearRange(0, $numberOfInitialTokensToClear - 1);
             $declarationTokens->clearAt(\count($declarationTokens) - 1); // clear `;`
             $declarationTokens->clearEmptyTokens();
 

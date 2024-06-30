@@ -34,11 +34,11 @@ final class CombineConsecutiveIssetsFixer extends AbstractFixer
     /**
      * {@inheritdoc}
      *
-     * Must run before MultilineWhitespaceBeforeSemicolonsFixer, NoSinglelineWhitespaceBeforeSemicolonsFixer, NoSpacesInsideParenthesisFixer, NoTrailingWhitespaceFixer, NoWhitespaceInBlankLineFixer.
+     * Must run before MultilineWhitespaceBeforeSemicolonsFixer, NoSinglelineWhitespaceBeforeSemicolonsFixer, NoSpacesInsideParenthesisFixer, NoTrailingWhitespaceFixer, NoWhitespaceInBlankLineFixer, SpacesInsideParenthesesFixer.
      */
     public function getPriority(): int
     {
-        return 3;
+        return 4;
     }
 
     public function isCandidate(Tokens $tokens): bool
@@ -104,7 +104,7 @@ final class CombineConsecutiveIssetsFixer extends AbstractFixer
     }
 
     /**
-     * @param int[] $indices
+     * @param list<int> $indices
      */
     private function clearTokens(Tokens $tokens, array $indices): void
     {
@@ -146,9 +146,9 @@ final class CombineConsecutiveIssetsFixer extends AbstractFixer
     }
 
     /**
-     * @param int[] $indices
+     * @param list<int> $indices
      *
-     * @return Token[]
+     * @return list<Token>
      */
     private function getTokenClones(Tokens $tokens, array $indices): array
     {

@@ -43,7 +43,7 @@ final class Utils
      */
     public static function camelCaseToUnderscore(string $string): string
     {
-        return mb_strtolower(Preg::replace('/(?<!^)((?=[\p{Lu}][^\p{Lu}])|(?<![\p{Lu}])(?=[\p{Lu}]))/', '_', $string));
+        return mb_strtolower(Preg::replace('/(?<!^)(?<!_)((?=[\p{Lu}][^\p{Lu}])|(?<![\p{Lu}])(?=[\p{Lu}]))/', '_', $string));
     }
 
     /**
@@ -74,11 +74,14 @@ final class Utils
      *
      * Stability is ensured by using Schwartzian transform.
      *
-     * @param mixed[]  $elements
-     * @param callable $getComparedValue a callable that takes a single element and returns the value to compare
-     * @param callable $compareValues    a callable that compares two values
+     * @template T
+     * @template R
      *
-     * @return mixed[]
+     * @param list<T>             $elements
+     * @param callable(T): R      $getComparedValue a callable that takes a single element and returns the value to compare
+     * @param callable(R, R): int $compareValues    a callable that compares two values
+     *
+     * @return list<T>
      */
     public static function stableSort(array $elements, callable $getComparedValue, callable $compareValues): array
     {
@@ -96,17 +99,15 @@ final class Utils
             return $a[1] <=> $b[1];
         });
 
-        return array_map(static function (array $item) {
-            return $item[0];
-        }, $elements);
+        return array_map(static fn (array $item) => $item[0], $elements);
     }
 
     /**
      * Sort fixers by their priorities.
      *
-     * @param FixerInterface[] $fixers
+     * @param list<FixerInterface> $fixers
      *
-     * @return FixerInterface[]
+     * @return list<FixerInterface>
      */
     public static function sortFixers(array $fixers): array
     {
@@ -114,19 +115,15 @@ final class Utils
         // `usort(): Array was modified by the user comparison function` warning for mocked objects.
         return self::stableSort(
             $fixers,
-            static function (FixerInterface $fixer): int {
-                return $fixer->getPriority();
-            },
-            static function (int $a, int $b): int {
-                return $b <=> $a;
-            }
+            static fn (FixerInterface $fixer): int => $fixer->getPriority(),
+            static fn (int $a, int $b): int => $b <=> $a
         );
     }
 
     /**
      * Join names in natural language using specified wrapper (double quote by default).
      *
-     * @param string[] $names
+     * @param list<string> $names
      *
      * @throws \InvalidArgumentException
      */
@@ -140,9 +137,7 @@ final class Utils
             throw new \InvalidArgumentException('Wrapper should be a single-char string or empty.');
         }
 
-        $names = array_map(static function (string $name) use ($wrapper): string {
-            return sprintf('%2$s%1$s%2$s', $name, $wrapper);
-        }, $names);
+        $names = array_map(static fn (string $name): string => sprintf('%2$s%1$s%2$s', $name, $wrapper), $names);
 
         $last = array_pop($names);
 
@@ -156,7 +151,7 @@ final class Utils
     /**
      * Join names in natural language wrapped in backticks, e.g. `a`, `b` and `c`.
      *
-     * @param string[] $names
+     * @param list<string> $names
      *
      * @throws \InvalidArgumentException
      */
@@ -165,9 +160,17 @@ final class Utils
         return self::naturalLanguageJoin($names, '`');
     }
 
+    public static function isFutureModeEnabled(): bool
+    {
+        return filter_var(
+            getenv('PHP_CS_FIXER_FUTURE_MODE'),
+            FILTER_VALIDATE_BOOL
+        );
+    }
+
     public static function triggerDeprecation(\Exception $futureException): void
     {
-        if (getenv('PHP_CS_FIXER_FUTURE_MODE')) {
+        if (self::isFutureModeEnabled()) {
             throw new \RuntimeException(
                 'Your are using something deprecated, see previous exception. Aborting execution because `PHP_CS_FIXER_FUTURE_MODE` environment variable is set.',
                 0,
@@ -213,7 +216,7 @@ final class Utils
     }
 
     /**
-     * @param array<mixed> $value
+     * @param array<array-key, mixed> $value
      */
     private static function arrayToString(array $value): string
     {

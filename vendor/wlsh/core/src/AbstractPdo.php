@@ -13,6 +13,11 @@ use Swoole\Coroutine;
 abstract class AbstractPdo implements ModelInterface
 {
     private static array $instance = [];
+    /**
+     * 此处使用静态延迟绑定，实现选择不同的数据库
+     * @var int
+     */
+    protected static string $db = 'mysql';
 
     public static function getInstance(): static
     {
@@ -20,9 +25,7 @@ abstract class AbstractPdo implements ModelInterface
         $_cid = Coroutine::getCid();
         if (!isset(static::$instance[$_class_name][$_cid])) {
             //new static()与new static::class一样，但为了IDE友好提示类中的方法，需要用new static()
-            $_instance = static::$instance[$_class_name][$_cid] = new static();
-        } else {
-            $_instance = static::$instance[$_class_name][$_cid];
+            static::$instance[$_class_name][$_cid] = new static();
         }
 
         defer(static function () use ($_class_name, $_cid) {
@@ -30,7 +33,7 @@ abstract class AbstractPdo implements ModelInterface
         });
 
         //为了IDE代码提示功能
-        return $_instance;
+        return static::$instance[$_class_name][$_cid];
     }
 
     private function __construct()
@@ -52,7 +55,7 @@ abstract class AbstractPdo implements ModelInterface
         $_cid = Coroutine::getCid();
         $query = static::$instance[$_class_name]['query'][$_cid] ?? '';
         if (empty($query)) {
-            $query = static::$instance[$_class_name]['query'][$_cid] = new Db(PdoPool::getInstance(static::setDb())->get());
+            $query = static::$instance[$_class_name]['query'][$_cid] = new Db(PdoPool::getInstance(static::$db)->get());
         }
 
         defer(static function () use ($_class_name, $_cid) {

@@ -29,7 +29,7 @@ use PhpCsFixer\Tokenizer\Tokens;
 final class PhpdocAnnotationWithoutDotFixer extends AbstractFixer
 {
     /**
-     * @var string[]
+     * @var list<string>
      */
     private array $tags = ['throws', 'return', 'param', 'internal', 'deprecated', 'var', 'type'];
 
@@ -95,8 +95,8 @@ function foo ($bar) {}
                 $content = $annotation->getContent();
 
                 if (
-                    1 !== Preg::match('/[.。]\h*$/u', $content)
-                    || 0 !== Preg::match('/[.。](?!\h*$)/u', $content, $matches)
+                    !Preg::match('/[.。]\h*$/u', $content)
+                    || Preg::match('/[.。](?!\h*$)/u', $content, $matches)
                 ) {
                     continue;
                 }
@@ -110,9 +110,7 @@ function foo ($bar) {}
                     : '';
                 $content = Preg::replaceCallback(
                     '/^(\s*\*\s*@\w+\s+'.$optionalTypeRegEx.')(\p{Lu}?(?=\p{Ll}|\p{Zs}))(.*)$/',
-                    static function (array $matches): string {
-                        return $matches[1].mb_strtolower($matches[2]).$matches[3];
-                    },
+                    static fn (array $matches): string => $matches[1].mb_strtolower($matches[2]).$matches[3],
                     $startLine->getContent(),
                     1
                 );

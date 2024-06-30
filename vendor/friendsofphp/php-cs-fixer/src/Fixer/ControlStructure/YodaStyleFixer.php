@@ -44,7 +44,7 @@ final class YodaStyleFixer extends AbstractFixer implements ConfigurableFixerInt
     private $candidateTypesConfiguration;
 
     /**
-     * @var array<int|string>
+     * @var list<int|string>
      */
     private $candidateTypes;
 
@@ -345,14 +345,18 @@ return $foo === count($bar);
         return $newTokens;
     }
 
+    /**
+     * @return null|array{left: array{start: int, end: int}, right: array{start: int, end: int}}
+     */
     private function getCompareFixableInfo(Tokens $tokens, int $index, bool $yoda): ?array
     {
-        $left = $this->getLeftSideCompareFixableInfo($tokens, $index);
         $right = $this->getRightSideCompareFixableInfo($tokens, $index);
 
         if (!$yoda && $this->isOfLowerPrecedenceAssignment($tokens[$tokens->getNextMeaningfulToken($right['end'])])) {
             return null;
         }
+
+        $left = $this->getLeftSideCompareFixableInfo($tokens, $index);
 
         if ($this->isListStatement($tokens, $left['start'], $left['end']) || $this->isListStatement($tokens, $right['start'], $right['end'])) {
             return null; // do not fix lists assignment inside statements
@@ -363,7 +367,7 @@ return $foo === count($bar);
         $leftSideIsVariable = $this->isVariable($tokens, $left['start'], $left['end'], $strict);
         $rightSideIsVariable = $this->isVariable($tokens, $right['start'], $right['end'], $strict);
 
-        if (!($leftSideIsVariable ^ $rightSideIsVariable)) {
+        if (!($leftSideIsVariable xor $rightSideIsVariable)) {
             return null; // both are (not) variables, do not touch
         }
 
@@ -440,6 +444,11 @@ return $foo === count($bar);
                 T_THROW,        // throw
                 T_COALESCE,
                 T_YIELD,        // yield
+                T_YIELD_FROM,
+                T_REQUIRE,
+                T_REQUIRE_ONCE,
+                T_INCLUDE,
+                T_INCLUDE_ONCE,
             ];
         }
 

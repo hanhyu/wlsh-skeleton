@@ -15,7 +15,6 @@ declare(strict_types=1);
 namespace PhpCsFixer\Fixer\Phpdoc;
 
 use PhpCsFixer\AbstractPhpdocTypesFixer;
-use PhpCsFixer\DocBlock\TypeExpression;
 use PhpCsFixer\Fixer\ConfigurableFixerInterface;
 use PhpCsFixer\FixerConfiguration\AllowedValueSubset;
 use PhpCsFixer\FixerConfiguration\FixerConfigurationResolver;
@@ -35,7 +34,7 @@ final class PhpdocTypesFixer extends AbstractPhpdocTypesFixer implements Configu
     /**
      * Available types, grouped.
      *
-     * @var array<string,string[]>
+     * @var array<string, list<string>>
      */
     private const POSSIBLE_TYPES = [
         'simple' => [
@@ -75,9 +74,7 @@ final class PhpdocTypesFixer extends AbstractPhpdocTypesFixer implements Configu
     {
         parent::configure($configuration);
 
-        $typesToFix = array_merge(...array_map(static function (string $group): array {
-            return self::POSSIBLE_TYPES[$group];
-        }, $this->configuration['groups']));
+        $typesToFix = array_merge(...array_map(static fn (string $group): array => self::POSSIBLE_TYPES[$group], $this->configuration['groups']));
 
         $this->typesSetToFix = array_combine($typesToFix, array_fill(0, \count($typesToFix), true));
     }
@@ -113,7 +110,7 @@ final class PhpdocTypesFixer extends AbstractPhpdocTypesFixer implements Configu
     /**
      * {@inheritdoc}
      *
-     * Must run before GeneralPhpdocAnnotationRemoveFixer, GeneralPhpdocTagRenameFixer, NoBlankLinesAfterPhpdocFixer, NoEmptyPhpdocFixer, NoSuperfluousPhpdocTagsFixer, PhpdocAddMissingParamAnnotationFixer, PhpdocAlignFixer, PhpdocInlineTagNormalizerFixer, PhpdocLineSpanFixer, PhpdocNoAccessFixer, PhpdocNoAliasTagFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocNoUselessInheritdocFixer, PhpdocOrderByValueFixer, PhpdocOrderFixer, PhpdocParamOrderFixer, PhpdocReturnSelfReferenceFixer, PhpdocScalarFixer, PhpdocSeparationFixer, PhpdocSingleLineVarSpacingFixer, PhpdocSummaryFixer, PhpdocTagCasingFixer, PhpdocTagTypeFixer, PhpdocToParamTypeFixer, PhpdocToPropertyTypeFixer, PhpdocToReturnTypeFixer, PhpdocTrimConsecutiveBlankLineSeparationFixer, PhpdocTrimFixer, PhpdocTypesOrderFixer, PhpdocVarAnnotationCorrectOrderFixer, PhpdocVarWithoutNameFixer.
+     * Must run before GeneralPhpdocAnnotationRemoveFixer, GeneralPhpdocTagRenameFixer, NoBlankLinesAfterPhpdocFixer, NoEmptyPhpdocFixer, NoSuperfluousPhpdocTagsFixer, PhpdocAddMissingParamAnnotationFixer, PhpdocAlignFixer, PhpdocArrayTypeFixer, PhpdocInlineTagNormalizerFixer, PhpdocLineSpanFixer, PhpdocListTypeFixer, PhpdocNoAccessFixer, PhpdocNoAliasTagFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocNoUselessInheritdocFixer, PhpdocOrderByValueFixer, PhpdocOrderFixer, PhpdocParamOrderFixer, PhpdocReadonlyClassCommentToKeywordFixer, PhpdocReturnSelfReferenceFixer, PhpdocScalarFixer, PhpdocSeparationFixer, PhpdocSingleLineVarSpacingFixer, PhpdocSummaryFixer, PhpdocTagCasingFixer, PhpdocTagTypeFixer, PhpdocToParamTypeFixer, PhpdocToPropertyTypeFixer, PhpdocToReturnTypeFixer, PhpdocTrimConsecutiveBlankLineSeparationFixer, PhpdocTrimFixer, PhpdocTypesOrderFixer, PhpdocVarAnnotationCorrectOrderFixer, PhpdocVarWithoutNameFixer.
      * Must run after PhpdocIndentFixer.
      */
     public function getPriority(): int
@@ -131,16 +128,16 @@ final class PhpdocTypesFixer extends AbstractPhpdocTypesFixer implements Configu
 
     protected function normalize(string $type): string
     {
-        return Preg::replaceCallback(
-            '/(\b|(?=\$|\\\\))(\$|\\\\)?'.TypeExpression::REGEX_IDENTIFIER.'(?!\\\\|\h*:)/',
-            function (array $matches): string {
-                $valueLower = strtolower($matches[0]);
-                if (isset($this->typesSetToFix[$valueLower])) {
-                    return $valueLower;
-                }
+        $typeLower = strtolower($type);
+        if (isset($this->typesSetToFix[$typeLower])) {
+            $type = $typeLower;
+        }
 
-                return $matches[0];
-            },
+        // normalize shape/callable/generic identifiers too
+        // TODO parse them as inner types and this will be not needed then
+        return Preg::replaceCallback(
+            '/^(\??\s*)([^()[\]{}<>\'"]+)(?<!\s)(\s*[\s()[\]{}<>])/',
+            fn ($matches) => $matches[1].$this->normalize($matches[2]).$matches[3],
             $type
         );
     }

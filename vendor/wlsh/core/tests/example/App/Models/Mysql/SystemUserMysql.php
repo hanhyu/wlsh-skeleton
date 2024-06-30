@@ -3,31 +3,24 @@ declare(strict_types=1);
 
 namespace Models\Mysql;
 
+use Models\Filed\FrameSystemUser;
 use Wlsh\AbstractPdo;
-use Wlsh\ProgramException;
 
 class SystemUserMysql extends AbstractPdo
 {
-    protected string $table = 'frame_system_user';
-
-    public static function setDb(): string
-    {
-        return 'mysql';
-    }
-
     /**
      * @param array $post
      * @return int
      */
     public function setUser(array $post): int
     {
-        return self::getDb()->from($this->table)
+        return self::getDb()->from(FrameSystemUser::Table)
             ->insert([
-                'name'   => $post['name'],
-                'pwd'    => password_hash($post['pwd'], PASSWORD_DEFAULT),
-                'status' => 10,
-                'crt_dt' => date('y-m-d H:i:s'),
-                'remark' => $post['remark'] ?? '',
+                FrameSystemUser::Name   => $post['name'],
+                FrameSystemUser::Pwd    => password_hash($post['pwd'], PASSWORD_DEFAULT),
+                FrameSystemUser::Status => 10,
+                FrameSystemUser::CrtDt  => date('y-m-d H:i:s'),
+                FrameSystemUser::Remark => $post['remark'] ?? '',
             ]);
     }
 
@@ -38,9 +31,9 @@ class SystemUserMysql extends AbstractPdo
      */
     public function getUserList(array $data): array
     {
-        return self::getDb()->from($this->table)
+        return self::getDb()->from(FrameSystemUser::Table)
             ->where($data['where'])
-            ->orderBy('id', 'DESC')
+            ->orderBy(FrameSystemUser::Id, 'DESC')
             ->offset($data['curr_data'])
             ->limit($data['page_size'])
             ->fetchAll();
@@ -55,7 +48,7 @@ class SystemUserMysql extends AbstractPdo
      */
     public function getListCount(): int
     {
-        return self::getDb()->from($this->table)->select('count(*)')->fetchColumn();
+        return self::getDb()->from(FrameSystemUser::Table)->select('count(*)')->fetchColumn();
         /*return (int)self::getDb()
             ->from('information_schema.`TABLES`')
             ->where('TABLE_NAME', $this->table)
@@ -65,7 +58,7 @@ class SystemUserMysql extends AbstractPdo
 
     public function delUser(int $id): int
     {
-        return self::getDb()->from($this->table)->where(['id' => $id])->delete();
+        return self::getDb()->from(FrameSystemUser::Table)->where([FrameSystemUser::Id => $id])->delete();
     }
 
     /**
@@ -75,9 +68,13 @@ class SystemUserMysql extends AbstractPdo
      */
     public function getUser(int $id): array|false
     {
-        return self::getDb()->from($this->table)
-            ->where('id', '=', $id)
-            ->select('id,status,remark')
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->where(FrameSystemUser::Id, '=', $id)
+            ->select([
+                FrameSystemUser::Id,
+                FrameSystemUser::Status,
+                FrameSystemUser::Remark,
+            ])
             ->fetchOne();
     }
 
@@ -88,9 +85,9 @@ class SystemUserMysql extends AbstractPdo
      */
     public function editUser(array $post): int
     {
-        return self::getDb()->from($this->table)
-            ->where('id', '=', $post['id'])
-            ->update(['status' => $post['status'], 'remark' => $post['remark']]);
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->where(FrameSystemUser::Id, '=', $post['id'])
+            ->update([FrameSystemUser::Status => $post['status'], FrameSystemUser::Remark => $post['remark']]);
     }
 
     /**
@@ -102,10 +99,15 @@ class SystemUserMysql extends AbstractPdo
      */
     public function getInfo(string $name): array|false
     {
-        return self::getDb()->from($this->table)
-            ->where(['name' => $name])
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->where([FrameSystemUser::Name => $name])
             ->limit(1)
-            ->select('id,name,status,pwd')
+            ->select([
+                FrameSystemUser::Id,
+                FrameSystemUser::Status,
+                FrameSystemUser::Name,
+                FrameSystemUser::Pwd,
+            ])
             ->fetchOne();
     }
 
@@ -120,17 +122,20 @@ class SystemUserMysql extends AbstractPdo
      */
     public function getNameById(array $uid): array
     {
-        return self::getDb()->from($this->table)
-            ->whereIn('id', $uid)
-            ->select('id,name')
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->whereIn(FrameSystemUser::Id, $uid)
+            ->select([
+                FrameSystemUser::Id,
+                FrameSystemUser::Name,
+            ])
             ->fetchAll();
     }
 
     public function testNameById(int $id): string
     {
-        return self::getDb()->from($this->table)
-            ->where('id', '=', $id)
-            ->select('name')
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->where(FrameSystemUser::Id, '=', $id)
+            ->select(FrameSystemUser::Name)
             ->fetchColumn();
     }
 
@@ -146,9 +151,9 @@ class SystemUserMysql extends AbstractPdo
      */
     public function getPwdByUid(int $uid): string
     {
-        return self::getDb()->from($this->table)
-            ->where('id', '=', $uid)
-            ->select('pwd')
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->where(FrameSystemUser::Id, '=', $uid)
+            ->select(FrameSystemUser::Pwd)
             ->fetchColumn();
     }
 
@@ -164,9 +169,9 @@ class SystemUserMysql extends AbstractPdo
      */
     public function editPwd(array $data): int
     {
-        return self::getDb()->from($this->table)
-            ->where('id', '=', $data['uid'])
-            ->update(['pwd' => password_hash($data['new_pwd'], PASSWORD_DEFAULT)]);
+        return self::getDb()->from(FrameSystemUser::Table)
+            ->where(FrameSystemUser::Id, '=', $data['uid'])
+            ->update([FrameSystemUser::Pwd => password_hash($data['new_pwd'], PASSWORD_DEFAULT)]);
     }
 
     /**
@@ -181,10 +186,10 @@ class SystemUserMysql extends AbstractPdo
      */
     public function existName(string $name): bool
     {
-        $id = self::getDb()->from($this->table)
-            ->where(['name' => $name])
+        $id = self::getDb()->from(FrameSystemUser::Table)
+            ->where([FrameSystemUser::Name => $name])
             ->limit(1)
-            ->select('id')
+            ->select(FrameSystemUser::Id)
             ->fetchOne();
 
         return $id !== false;

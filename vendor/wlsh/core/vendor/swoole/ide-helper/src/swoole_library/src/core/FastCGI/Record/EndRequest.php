@@ -56,15 +56,15 @@ class EndRequest extends Record
         int $appStatus = 0,
         string $reserved = ''
     ) {
-        $this->type = FastCGI::END_REQUEST;
+        $this->type           = FastCGI::END_REQUEST;
         $this->protocolStatus = $protocolStatus;
-        $this->appStatus = $appStatus;
-        $this->reserved1 = $reserved;
+        $this->appStatus      = $appStatus;
+        $this->reserved1      = $reserved;
         $this->setContentData($this->packPayload());
     }
 
     /**
-     * Returns App status
+     * Returns app status
      *
      * The appStatus component is an application-level status code. Each role documents its usage of appStatus.
      */

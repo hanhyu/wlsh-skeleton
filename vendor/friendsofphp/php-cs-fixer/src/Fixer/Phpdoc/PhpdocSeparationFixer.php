@@ -36,6 +36,18 @@ use Symfony\Component\OptionsResolver\Exception\InvalidOptionsException;
 final class PhpdocSeparationFixer extends AbstractFixer implements ConfigurableFixerInterface
 {
     /**
+     * @internal
+     *
+     * @var string[][]
+     */
+    public const OPTION_GROUPS_DEFAULT = [
+        ['author', 'copyright', 'license'],
+        ['category', 'package', 'subpackage'],
+        ['property', 'property-read', 'property-write'],
+        ['deprecated', 'link', 'see', 'since'],
+    ];
+
+    /**
      * @var string[][]
      */
     private array $groups;
@@ -43,21 +55,21 @@ final class PhpdocSeparationFixer extends AbstractFixer implements ConfigurableF
     public function getDefinition(): FixerDefinitionInterface
     {
         $code = <<<'EOF'
-<?php
-/**
- * Hello there!
- *
- * @author John Doe
- * @custom Test!
- *
- * @throws Exception|RuntimeException foo
- * @param string $foo
- *
- * @param bool   $bar Bar
- * @return int  Return the number of changes.
- */
+            <?php
+            /**
+             * Hello there!
+             *
+             * @author John Doe
+             * @custom Test!
+             *
+             * @throws Exception|RuntimeException foo
+             * @param string $foo
+             *
+             * @param bool   $bar Bar
+             * @return int  Return the number of changes.
+             */
 
-EOF;
+            EOF;
 
         return new FixerDefinition(
             'Annotations in PHPDoc should be grouped together so that annotations of the same type immediately follow each other. Annotations of a different type are separated by a single blank line.',
@@ -76,17 +88,17 @@ EOF;
                 ]]),
                 new CodeSample(
                     <<<'EOF'
-                    <?php
-                    /**
-                     * @ORM\Id
-                     *
-                     * @ORM\GeneratedValue
-                     * @Assert\NotNull
-                     *
-                     * @Assert\Type("string")
-                     */
+                        <?php
+                        /**
+                         * @ORM\Id
+                         *
+                         * @ORM\GeneratedValue
+                         * @Assert\NotNull
+                         *
+                         * @Assert\Type("string")
+                         */
 
-                    EOF,
+                        EOF,
                     ['groups' => [['ORM\*'], ['Assert\*']]],
                 ),
                 new CodeSample($code, ['skip_unlisted_annotations' => true]),
@@ -105,7 +117,7 @@ EOF;
      * {@inheritdoc}
      *
      * Must run before PhpdocAlignFixer.
-     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, PhpUnitInternalClassFixer, PhpUnitSizeClassFixer, PhpUnitTestClassRequiresCoversFixer, PhpdocIndentFixer, PhpdocNoAccessFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocOrderFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
+     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, GeneralPhpdocAnnotationRemoveFixer, PhpUnitAttributesFixer, PhpUnitInternalClassFixer, PhpUnitSizeClassFixer, PhpUnitTestClassRequiresCoversFixer, PhpdocIndentFixer, PhpdocNoAccessFixer, PhpdocNoEmptyReturnFixer, PhpdocNoPackageFixer, PhpdocOrderFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
      */
     public function getPriority(): int
     {
@@ -134,7 +146,7 @@ EOF;
 
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
-        $allowTagToBelongToOnlyOneGroup = function ($groups) {
+        $allowTagToBelongToOnlyOneGroup = static function (array $groups): bool {
             $tags = [];
             foreach ($groups as $groupIndex => $group) {
                 foreach ($group as $member) {
@@ -161,12 +173,7 @@ EOF;
         return new FixerConfigurationResolver([
             (new FixerOptionBuilder('groups', 'Sets of annotation types to be grouped together. Use `*` to match any tag character.'))
                 ->setAllowedTypes(['string[][]'])
-                ->setDefault([
-                    ['deprecated', 'link', 'see', 'since'],
-                    ['author', 'copyright', 'license'],
-                    ['category', 'package', 'subpackage'],
-                    ['property', 'property-read', 'property-write'],
-                ])
+                ->setDefault(self::OPTION_GROUPS_DEFAULT)
                 ->setAllowedValues([$allowTagToBelongToOnlyOneGroup])
                 ->getOption(),
             (new FixerOptionBuilder('skip_unlisted_annotations', 'Whether to skip annotations that are not listed in any group.'))
@@ -214,7 +221,7 @@ EOF;
 
             if (true === $shouldBeTogether) {
                 $this->ensureAreTogether($doc, $annotation, $next);
-            } elseif (false === $shouldBeTogether || !$this->configuration['skip_unlisted_annotations']) {
+            } elseif (false === $shouldBeTogether || false === $this->configuration['skip_unlisted_annotations']) {
                 $this->ensureAreSeparate($doc, $annotation, $next);
             }
         }
@@ -228,7 +235,7 @@ EOF;
         $pos = $first->getEnd();
         $final = $second->getStart();
 
-        for ($pos = $pos + 1; $pos < $final; ++$pos) {
+        for (++$pos; $pos < $final; ++$pos) {
             $doc->getLine($pos)->remove();
         }
     }
@@ -248,7 +255,7 @@ EOF;
             return;
         }
 
-        for ($pos = $pos + 1; $pos < $final; ++$pos) {
+        for (++$pos; $pos < $final; ++$pos) {
             $doc->getLine($pos)->remove();
         }
     }
@@ -303,7 +310,7 @@ EOF;
             $tagInGroup = preg_quote($tagInGroup, '/');
             $tagInGroup = str_replace('\\\\\*', '.*?', $tagInGroup);
 
-            if (1 === Preg::match("/^{$tagInGroup}$/", $tag)) {
+            if (Preg::match("/^{$tagInGroup}$/", $tag)) {
                 return true;
             }
         }

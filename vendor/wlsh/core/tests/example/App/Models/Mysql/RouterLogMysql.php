@@ -5,22 +5,19 @@ declare(strict_types=1);
 namespace Models\Mysql;
 
 
+use JsonException;
 use Wlsh\AbstractPdo;
-use Wlsh\ProgramException;
 
 class RouterLogMysql extends AbstractPdo
 {
+    protected static string $db = 'wlsh_log';
     protected string $table = 'router_log';
-
-    public static function setDb(): string
-    {
-        return 'wlsh_log';
-    }
 
     /**
      * @param array $data
      *
      * @return int
+     * @throws JsonException
      */
     public function setLog(array $data): int
     {

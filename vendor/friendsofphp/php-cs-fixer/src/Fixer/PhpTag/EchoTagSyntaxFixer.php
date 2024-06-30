@@ -64,12 +64,12 @@ final class EchoTagSyntaxFixer extends AbstractFixer implements ConfigurableFixe
     public function getDefinition(): FixerDefinitionInterface
     {
         $sample = <<<'EOT'
-<?=1?>
-<?php print '2' . '3'; ?>
-<?php /* comment */ echo '2' . '3'; ?>
-<?php print '2' . '3'; someFunction(); ?>
+            <?=1?>
+            <?php print '2' . '3'; ?>
+            <?php /* comment */ echo '2' . '3'; ?>
+            <?php print '2' . '3'; someFunction(); ?>
 
-EOT;
+            EOT;
 
         return new FixerDefinition(
             'Replaces short-echo `<?=` with long format `<?php echo`/`<?php print` syntax, or vice-versa.',
@@ -226,7 +226,7 @@ EOT;
     /**
      * Builds the list of tokens that replace a long echo sequence.
      *
-     * @return Token[]
+     * @return list<Token>
      */
     private function buildLongToShortTokens(Tokens $tokens, int $openTagIndex, int $echoTagIndex): array
     {

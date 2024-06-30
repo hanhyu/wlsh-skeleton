@@ -65,7 +65,7 @@ final class SingleLineThrowFixer extends AbstractFixer
 
             $endCandidateIndex = $tokens->getNextMeaningfulToken($index);
 
-            while (!$tokens[$endCandidateIndex]->equalsAny([')', ']', ',', ';'])) {
+            while (!$tokens[$endCandidateIndex]->equalsAny([')', ']', ',', ';', [T_CLOSE_TAG]])) {
                 $blockType = Tokens::detectBlockType($tokens[$endCandidateIndex]);
 
                 if (null !== $blockType) {
@@ -95,7 +95,7 @@ final class SingleLineThrowFixer extends AbstractFixer
                 } elseif (str_starts_with($content, '#')) {
                     $content = '/*'.substr($content, 1).' */';
                     $tokens->clearAt($index + 1);
-                } elseif (0 !== Preg::match('/\R/', $content)) {
+                } elseif (Preg::match('/\R/', $content)) {
                     $content = Preg::replace('/\R/', ' ', $content);
                 }
 
@@ -108,7 +108,7 @@ final class SingleLineThrowFixer extends AbstractFixer
                 continue;
             }
 
-            if (0 === Preg::match('/\R/', $content)) {
+            if (!Preg::match('/\R/', $content)) {
                 continue;
             }
 
@@ -140,7 +140,7 @@ final class SingleLineThrowFixer extends AbstractFixer
         static $tokens = null;
 
         if (null === $tokens) {
-            $tokens = array_merge(self::REMOVE_WHITESPACE_AFTER_TOKENS, self::REMOVE_WHITESPACE_AROUND_TOKENS);
+            $tokens = [...self::REMOVE_WHITESPACE_AFTER_TOKENS, ...self::REMOVE_WHITESPACE_AROUND_TOKENS];
         }
 
         return $token->equalsAny($tokens) || $token->isObjectOperator();
@@ -151,7 +151,7 @@ final class SingleLineThrowFixer extends AbstractFixer
         static $tokens = null;
 
         if (null === $tokens) {
-            $tokens = array_merge(self::REMOVE_WHITESPACE_AROUND_TOKENS, self::REMOVE_WHITESPACE_BEFORE_TOKENS);
+            $tokens = [...self::REMOVE_WHITESPACE_AROUND_TOKENS, ...self::REMOVE_WHITESPACE_BEFORE_TOKENS];
         }
 
         return $token->equalsAny($tokens) || $token->isObjectOperator();

@@ -89,10 +89,8 @@ class QuestionHelper extends Helper
 
     /**
      * Prevents usage of stty.
-     *
-     * @return void
      */
-    public static function disableStty()
+    public static function disableStty(): void
     {
         self::$stty = false;
     }
@@ -190,10 +188,8 @@ class QuestionHelper extends Helper
 
     /**
      * Outputs the question prompt.
-     *
-     * @return void
      */
-    protected function writePrompt(OutputInterface $output, Question $question)
+    protected function writePrompt(OutputInterface $output, Question $question): void
     {
         $message = $question->getQuestion();
 
@@ -228,10 +224,8 @@ class QuestionHelper extends Helper
 
     /**
      * Outputs an error message.
-     *
-     * @return void
      */
-    protected function writeError(OutputInterface $output, \Exception $error)
+    protected function writeError(OutputInterface $output, \Exception $error): void
     {
         if (null !== $this->getHelperSet() && $this->getHelperSet()->has('formatter')) {
             $message = $this->getHelperSet()->get('formatter')->formatBlock($error->getMessage(), 'error');
@@ -501,19 +495,7 @@ class QuestionHelper extends Helper
             return self::$stdinIsInteractive;
         }
 
-        if (\function_exists('stream_isatty')) {
-            return self::$stdinIsInteractive = @stream_isatty(fopen('php://stdin', 'r'));
-        }
-
-        if (\function_exists('posix_isatty')) {
-            return self::$stdinIsInteractive = @posix_isatty(fopen('php://stdin', 'r'));
-        }
-
-        if (!\function_exists('shell_exec')) {
-            return self::$stdinIsInteractive = true;
-        }
-
-        return self::$stdinIsInteractive = (bool) shell_exec('stty 2> '.('\\' === \DIRECTORY_SEPARATOR ? 'NUL' : '/dev/null'));
+        return self::$stdinIsInteractive = @stream_isatty(fopen('php://stdin', 'r'));
     }
 
     /**

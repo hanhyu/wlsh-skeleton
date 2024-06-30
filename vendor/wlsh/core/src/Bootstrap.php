@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use Swoole\Atomic;
 use Swoole\Coroutine;
+use Swoole\Event;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\Server\Task;
@@ -10,7 +11,7 @@ use Swoole\Table;
 use Swoole\Timer;
 use Swoole\WebSocket\Server;
 use Swoole\WebSocket\Frame;
-use Wlsh\{DI, FormsVali, ProgramException, Router, ValidateException};
+use Wlsh\{Context, DI, FormsVali, ProgramException, Router, ValidateException};
 
 /**
  * 注意此类中的每一行代码请勿随意上下移动
@@ -151,7 +152,7 @@ class Bootstrap
             Timer::tick(30000, function () use ($server) {
                 foreach ($server->connections as $fd) {
                     if ($this->server->isEstablished($fd)) {
-                        $this->server->push($fd, true, 9);
+                        $this->server->push($fd, 'true', 9);
                     }
                 }
             });
@@ -195,7 +196,7 @@ class Bootstrap
 
         // websocket握手连接算法验证
         $secWebSocketKey = $request->header['sec-websocket-key'];
-        $patten = '#^[+/0-9A-Za-z]{21}[AQgw]==$#';
+        $patten          = '#^[+/0-9A-Za-z]{21}[AQgw]==$#';
         if (0 === preg_match($patten, $secWebSocketKey) || 16 !== strlen(base64_decode($secWebSocketKey))) {
             $response->end();
             return false;
@@ -206,9 +207,9 @@ class Bootstrap
         ));
 
         $headers = [
-            'Upgrade' => 'websocket',
-            'Connection' => 'Upgrade',
-            'Sec-WebSocket-Accept' => $key,
+            'Upgrade'               => 'websocket',
+            'Connection'            => 'Upgrade',
+            'Sec-WebSocket-Accept'  => $key,
             'Sec-WebSocket-Version' => '13',
             //'Sec-WebSocket-Protocol' => $token_protocol,
         ];
@@ -224,9 +225,10 @@ class Bootstrap
         $response->status(101);
         $response->end();
 
-        $this->server->defer(function () use ($request) {
+        Event::defer(function () use ($request) {
             $this->onOpen($this->server, $request);
         });
+
         return true;
     }
 
@@ -272,8 +274,12 @@ class Bootstrap
                 return;
             }
 
-            Coroutine::getContext()->fd = $frame->fd;
-            Coroutine::getContext()->ws_data_arr = $res;
+            Context::put('fd', $frame->fd);
+            Context::put('ws_data_arr', $res);
+
+            Coroutine::defer(function () {
+                Context::delete();
+            });
 
             //限流功能，该接口请求次数加1
             $this->table->incr($res['uri'], 'rate_limit', 1);
@@ -282,7 +288,6 @@ class Bootstrap
                 $uri_arr = explode('/', $res['uri']);
                 $this->routerStartup($uri_arr, 'WS');
 
-                //todo 在控制器方法中直接返回
                 /*if ($server->isEstablished($frame->fd)) {
                     $server->push($frame->fd, $res);
                 }*/
@@ -365,15 +370,19 @@ class Bootstrap
         使用局部变量是安全的，因为局部变量的值会自动保存在协程栈中，
         其他协程访问不到协程的局部变量。*/
 
-        Coroutine::getContext()->request = $request;
-        Coroutine::getContext()->response = $response;
-        Coroutine::getContext()->trace_id = $request->header['Traceid'] ?? $this->generalTraceId(getIP($request->server));
+        Context::put('request', $request);
+        Context::put('response', $response);
+        Context::put('trace_id', $request->header['Traceid'] ?? $this->generalTraceId(getIP($request->server)));
+
+        Coroutine::defer(function () {
+            Context::delete();
+        });
 
         //限流功能，该接口请求次数加1
         $this->table->incr($request_uri_str, 'rate_limit', 1);
 
         $response->status(200);
-        $response->header('Traceid', Coroutine::getContext()->trace_id);
+        $response->header('Traceid', Context::get('trace_id'));
 
         try {
             $this->routerStartup($request_uri_arr, $request->getMethod());
@@ -420,10 +429,14 @@ class Bootstrap
     public function onReceive(Server $server, int $fd, int $reactor_id, string $data): void
     {
         $data = substr($data, 4);
-        $res = json_decode($data, true, 512, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $res  = json_decode($data, true, 512, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 
-        Coroutine::getContext()->fd = $fd;
-        Coroutine::getContext()->receive_data_arr = $res;
+        Context::put('fd', $fd);
+        Context::put('receive_data_arr', $res);
+
+        Coroutine::defer(function () {
+            Context::delete();
+        });
 
         try {
             $uri_arr = explode('/', $res['uri']);
@@ -453,7 +466,11 @@ class Bootstrap
     {
         $res = unserialize((string)$task->data);
 
-        Coroutine::getContext()->task_data_arr = $res;
+        Context::put('task_data_arr', $res);
+
+        Coroutine::defer(function () {
+            Context::delete();
+        });
 
         try {
             $uri_arr = explode('/', $res['uri']);
@@ -544,7 +561,7 @@ class Bootstrap
      *
      * @throws ProgramException
      */
-    public function routerStartup(array $uri_arr, string $method)
+    public function routerStartup(array $uri_arr, string $method): void
     {
         /*可以在这个钩子函数routerShutdown中做拦截处理，获取当前URI，以当前URI做KEY，判断是否存在该KEY的缓存，
          若存在则停止解析，直接输出页面，缓存数据页。
@@ -556,15 +573,15 @@ class Bootstrap
          */
         switch (count($uri_arr)) {
             case 5:
-                $ctrl = 'Modules\\' . ucfirst($uri_arr[1]) . '\Controllers\\' . ucfirst($uri_arr[2]) . '\\' . ucfirst($uri_arr[3]) . 'Controller';
+                $ctrl   = 'Modules\\' . ucfirst($uri_arr[1]) . '\Controllers\\' . ucfirst($uri_arr[2]) . '\\' . ucfirst($uri_arr[3]) . 'Controller';
                 $action = $uri_arr[4] . 'Action';
                 break;
             case 4:
-                $ctrl = 'Modules\\' . ucfirst($uri_arr[1]) . '\Controllers\\' . ucfirst($uri_arr[2]) . 'Controller';
+                $ctrl   = 'Modules\\' . ucfirst($uri_arr[1]) . '\Controllers\\' . ucfirst($uri_arr[2]) . 'Controller';
                 $action = $uri_arr[3] . 'Action';
                 break;
             default:
-                $ctrl = 'Controllers\\' . ucfirst($uri_arr[1]) . 'Controller';
+                $ctrl   = 'Controllers\\' . ucfirst($uri_arr[1]) . 'Controller';
                 $action = ($uri_arr[2] ?? '') . 'Action';
         }
 
@@ -602,19 +619,19 @@ class Bootstrap
                     switch ($ref_router->method) {
                         case 'GET':
                         case 'POST':
-                            $request = Coroutine::getContext()->request;
-                            $response = Coroutine::getContext()->response;
+                            $request  = Context::get('request');
+                            $response = Context::get('response');
                             break;
                         case 'WS':
-                            $request = Coroutine::getContext()->ws_data_arr;
+                            $request  = Context::get('ws_data_arr');
                             $response = new stdClass();
                             break;
                         case 'TASK':
-                            $request = Coroutine::getContext()->task_data_arr;
+                            $request  = Context::get('task_data_arr');
                             $response = new stdClass();
                             break;
                         default:
-                            $request = new stdClass();
+                            $request  = new stdClass();
                             $response = new stdClass();
                     }
 
@@ -627,9 +644,7 @@ class Bootstrap
 
                     if (!empty($ref_router->before)) {
                         $before_action = $ref_router->before;
-                        if ($before_res = $class->$before_action()) {
-                            return $before_res;
-                        }
+                        $class->$before_action();
                     }
 
                     $class->$action($request, $response);
@@ -656,7 +671,7 @@ class Bootstrap
     private function authToken(): void
     {
         //验证授权token的合法性与过期时间
-        $token = Coroutine::getContext()->request->header['authorization'] ?? '0';
+        $token = Context::get('request')->header['authorization'] ?? '0';
 
         $res = validateToken($token);
         if (!empty($res)) {

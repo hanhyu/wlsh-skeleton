@@ -81,6 +81,14 @@ final class PhpdocTypesOrderFixer extends AbstractFixer implements ConfigurableF
                         'null_adjustment' => 'none',
                     ]
                 ),
+                new CodeSample(
+                    '<?php
+/**
+ * @param Aaa|AA $bar
+ */
+',
+                    ['case_sensitive' => true]
+                ),
             ]
         );
     }
@@ -89,7 +97,7 @@ final class PhpdocTypesOrderFixer extends AbstractFixer implements ConfigurableF
      * {@inheritdoc}
      *
      * Must run before PhpdocAlignFixer.
-     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocIndentFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
+     * Must run after AlignMultilineCommentFixer, CommentToPhpdocFixer, PhpdocArrayTypeFixer, PhpdocIndentFixer, PhpdocListTypeFixer, PhpdocScalarFixer, PhpdocToCommentFixer, PhpdocTypesFixer.
      */
     public function getPriority(): int
     {
@@ -111,6 +119,10 @@ final class PhpdocTypesOrderFixer extends AbstractFixer implements ConfigurableF
             (new FixerOptionBuilder('null_adjustment', 'Forces the position of `null` (overrides `sort_algorithm`).'))
                 ->setAllowedValues(['always_first', 'always_last', 'none'])
                 ->setDefault('always_first')
+                ->getOption(),
+            (new FixerOptionBuilder('case_sensitive', 'Whether the sorting should be case sensitive.'))
+                ->setAllowedTypes(['bool'])
+                ->setDefault(false)
                 ->getOption(),
         ]);
     }
@@ -141,7 +153,7 @@ final class PhpdocTypesOrderFixer extends AbstractFixer implements ConfigurableF
 
                 // fix @method parameters types
                 $line = $doc->getLine($annotation->getStart());
-                $line->setContent(Preg::replaceCallback('/@method\s+'.TypeExpression::REGEX_TYPES.'\s+\K(?&callable)/', function (array $matches) {
+                $line->setContent(Preg::replaceCallback('/\*\h*@method\h+'.TypeExpression::REGEX_TYPES.'\h+\K(?&callable)/', function (array $matches) {
                     $typeExpression = new TypeExpression($matches[0], null, []);
 
                     return implode('|', $this->sortTypes($typeExpression));
@@ -153,13 +165,11 @@ final class PhpdocTypesOrderFixer extends AbstractFixer implements ConfigurableF
     }
 
     /**
-     * @return string[]
+     * @return list<string>
      */
     private function sortTypes(TypeExpression $typeExpression): array
     {
-        $normalizeType = static function (string $type): string {
-            return Preg::replace('/^\\??\\\?/', '', $type);
-        };
+        $normalizeType = static fn (string $type): string => Preg::replace('/^\(*\??\\\?/', '', $type);
 
         $typeExpression->sortTypes(
             function (TypeExpression $a, TypeExpression $b) use ($normalizeType): int {
@@ -178,7 +188,7 @@ final class PhpdocTypesOrderFixer extends AbstractFixer implements ConfigurableF
                 }
 
                 if ('alpha' === $this->configuration['sort_algorithm']) {
-                    return strcasecmp($a, $b);
+                    return true === $this->configuration['case_sensitive'] ? $a <=> $b : strcasecmp($a, $b);
                 }
 
                 return 0;

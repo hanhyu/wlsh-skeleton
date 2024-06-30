@@ -43,6 +43,11 @@ final class BinaryOperatorSpacesFixer extends AbstractFixer implements Configura
     /**
      * @internal
      */
+    public const AT_LEAST_SINGLE_SPACE = 'at_least_single_space';
+
+    /**
+     * @internal
+     */
     public const NO_SPACE = 'no_space';
 
     /**
@@ -145,7 +150,7 @@ final class BinaryOperatorSpacesFixer extends AbstractFixer implements Configura
     private int $currentLevel;
 
     /**
-     * @var array<null|string>
+     * @var list<null|string>
      */
     private static array $allowedValues = [
         self::ALIGN,
@@ -156,6 +161,7 @@ final class BinaryOperatorSpacesFixer extends AbstractFixer implements Configura
         self::ALIGN_SINGLE_SPACE_MINIMAL_BY_SCOPE,
         self::SINGLE_SPACE,
         self::NO_SPACE,
+        self::AT_LEAST_SINGLE_SPACE,
         null,
     ];
 
@@ -302,7 +308,7 @@ $array = [
     /**
      * {@inheritdoc}
      *
-     * Must run after ArrayIndentationFixer, ArraySyntaxFixer, AssignNullCoalescingToCoalesceEqualFixer, ListSyntaxFixer, ModernizeStrposFixer, NoMultilineWhitespaceAroundDoubleArrowFixer, NoUnsetCastFixer, PowToExponentiationFixer, StandardizeNotEqualsFixer, StrictComparisonFixer.
+     * Must run after ArrayIndentationFixer, ArraySyntaxFixer, AssignNullCoalescingToCoalesceEqualFixer, ListSyntaxFixer, LongToShorthandOperatorFixer, ModernizeStrposFixer, NoMultilineWhitespaceAroundDoubleArrowFixer, NoUnsetCastFixer, PowToExponentiationFixer, StandardizeNotEqualsFixer, StrictComparisonFixer.
      */
     public function getPriority(): int
     {
@@ -401,6 +407,12 @@ $array = [
             return;
         }
 
+        if (self::AT_LEAST_SINGLE_SPACE === $this->operators[$tokenContent]) {
+            $this->fixWhiteSpaceAroundOperatorToAtLeastSingleSpace($tokens, $index);
+
+            return;
+        }
+
         if (self::NO_SPACE === $this->operators[$tokenContent]) {
             $this->fixWhiteSpaceAroundOperatorToNoSpace($tokens, $index);
 
@@ -451,6 +463,19 @@ $array = [
                 $tokens[$index - 1] = new Token([T_WHITESPACE, ' ']);
             }
         } else {
+            $tokens->insertAt($index, new Token([T_WHITESPACE, ' ']));
+        }
+    }
+
+    private function fixWhiteSpaceAroundOperatorToAtLeastSingleSpace(Tokens $tokens, int $index): void
+    {
+        // fix white space after operator
+        if (!$tokens[$index + 1]->isWhitespace()) {
+            $tokens->insertAt($index + 1, new Token([T_WHITESPACE, ' ']));
+        }
+
+        // fix white space before operator
+        if (!$tokens[$index - 1]->isWhitespace()) {
             $tokens->insertAt($index, new Token([T_WHITESPACE, ' ']));
         }
     }
@@ -601,7 +626,7 @@ $array = [
 
             if ($token->isGivenKind(T_FN)) {
                 $from = $tokens->getNextMeaningfulToken($index);
-                $until = $this->getLastTokenIndexOfFn($tokens, $index);
+                $until = $this->tokensAnalyzer->getLastTokenIndexOfArrowFunction($index);
                 $this->injectAlignmentPlaceholders($tokens, $from + 1, $until - 1, $tokenContent);
                 $index = $until;
 
@@ -690,7 +715,7 @@ $array = [
             if ($token->isGivenKind(T_FN)) {
                 $yieldFoundSinceLastPlaceholder = false;
                 $from = $tokens->getNextMeaningfulToken($index);
-                $until = $this->getLastTokenIndexOfFn($tokens, $index);
+                $until = $this->tokensAnalyzer->getLastTokenIndexOfArrowFunction($index);
                 $this->injectArrayAlignmentPlaceholders($tokens, $from + 1, $until - 1);
                 $index = $until;
 
@@ -879,7 +904,7 @@ $array = [
                             self::ALIGN_SINGLE_SPACE_MINIMAL === $alignStrategy
                             || self::ALIGN_SINGLE_SPACE_MINIMAL_BY_SCOPE === $alignStrategy
                         ) {
-                            if (1 !== Preg::match('/^\h+$/', $before)) { // if indent; do not move, leave to other fixer
+                            if (!Preg::match('/^\h+$/', $before)) { // if indent; do not move, leave to other fixer
                                 $before = rtrim($before).' ';
                             }
                         }
@@ -909,34 +934,5 @@ $array = [
         }
 
         return $tmpCode;
-    }
-
-    private function getLastTokenIndexOfFn(Tokens $tokens, int $index): int
-    {
-        $index = $tokens->getNextTokenOfKind($index, [[T_DOUBLE_ARROW]]);
-
-        while (true) {
-            $index = $tokens->getNextMeaningfulToken($index);
-
-            if ($tokens[$index]->equalsAny([';', ',', [T_CLOSE_TAG]])) {
-                break;
-            }
-
-            $blockType = Tokens::detectBlockType($tokens[$index]);
-
-            if (null === $blockType) {
-                continue;
-            }
-
-            if ($blockType['isStart']) {
-                $index = $tokens->findBlockEnd($blockType['type'], $index);
-
-                continue;
-            }
-
-            break;
-        }
-
-        return $index;
     }
 }

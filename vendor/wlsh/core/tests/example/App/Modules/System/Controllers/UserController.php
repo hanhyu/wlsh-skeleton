@@ -4,9 +4,7 @@ declare(strict_types=1);
 namespace Modules\System\Controllers;
 
 use Domain\System\UserDomain;
-use Models\Forms\SystemUserForms;
 use Models\Redis\UserRedis;
-use Swoole\Coroutine;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Wlsh\Router;
@@ -28,10 +26,16 @@ class UserController
     #[Router(method: 'GET', auth: false)]
     public function getUserListAction(Request $request, Response $response): void
     {
-        $data = validator($request, SystemUserForms::$getUserList);
-        $res  = $this->user->getInfoList($data);
-        $res  = httpJson(data: $res);
+        $data = validator($request, [
+            'curr_page' => 'Required|IntGe:1',
+            'page_size' => 'Required|IntGe:1',
+        ]);
+
+        $res = $this->user->getInfoList($data);
+
+        $res = httpJson(data: $res);
         routerLog($request, 'info', $res);
+
         $response->end($res);
     }
 
@@ -41,8 +45,12 @@ class UserController
     #[Router(method: 'GET', auth: false)]
     public function getUserAction(Request $request, Response $response): void
     {
-        $data = validator($request, SystemUserForms::$getUser);
-        $res  = $this->user->getUserById((int)$data['id']);
+        $data = validator($request, [
+            'id' => 'Required|IntGe:1',
+        ]);
+
+        $res = $this->user->getUserById((int)$data['id']);
+
         if (!empty($res)) {
             $response->end(httpJson(data: $res));
         } else {
@@ -60,7 +68,12 @@ class UserController
     #[Router(method: 'POST', auth: false)]
     public function loginAction(Request $request, Response $response): void
     {
-        $data = validator($request, SystemUserForms::$userLogin);
+        $data = validator($request, [
+            'name'   => 'Required|StrLenGeLe:1,50',
+            'pwd'    => 'Required|StrLenGeLe:3,20',
+            'remark' => 'StrLenGeLe:1,50',
+        ]);
+
         $info = $this->user->getInfoByName($data['name']);
         if (!empty($info)) {
             if ($info['status'] === 0) {
@@ -83,7 +96,7 @@ class UserController
         } else {
             $resp_content = httpJson(400, '用户名或密码错误');
         }
-       // sign(Coroutine::getCid(), $resp_content);
+        // sign(Coroutine::getCid(), $resp_content);
 
         $response->end($resp_content);
     }

@@ -1,11 +1,11 @@
 version: "3"
 services:
-  wlsh-api-php81:
+  wlsh-api-php83:
     build:
       context: .
       dockerfile: Dockerfile
     image: "hanhyu/wlsh:v81"
-    container_name: wlsh-api81
+    container_name: wlsh-api83
     privileged: true
     networks:
       wlsh-net:
@@ -19,7 +19,7 @@ services:
       - AUTORELOAD_PROGRAMS=wlsh
       - AUTORELOAD_ANY_FILES=0
     volumes:
-      - "../../wlsh-skeleton:/home/wlsh"
+      - "../:/home/wlsh"
     working_dir: /home/wlsh
     expose:
       - "9770"

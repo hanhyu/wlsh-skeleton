@@ -15,6 +15,10 @@ declare(strict_types=1);
 namespace PhpCsFixer\Fixer\PhpUnit;
 
 use PhpCsFixer\Fixer\AbstractPhpUnitFixer;
+use PhpCsFixer\Fixer\ConfigurableFixerInterface;
+use PhpCsFixer\FixerConfiguration\FixerConfigurationResolver;
+use PhpCsFixer\FixerConfiguration\FixerConfigurationResolverInterface;
+use PhpCsFixer\FixerConfiguration\FixerOptionBuilder;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
@@ -26,7 +30,7 @@ use PhpCsFixer\Tokenizer\TokensAnalyzer;
 /**
  * @author Kuba Werłos <werlos@gmail.com>
  */
-final class PhpUnitDataProviderStaticFixer extends AbstractPhpUnitFixer
+final class PhpUnitDataProviderStaticFixer extends AbstractPhpUnitFixer implements ConfigurableFixerInterface
 {
     public function getDefinition(): FixerDefinitionInterface
     {
@@ -44,23 +48,60 @@ class FooTest extends TestCase {
 }
 '
                 ),
+                new CodeSample(
+                    '<?php
+class FooTest extends TestCase {
+    /**
+     * @dataProvider provideSomethingCases1
+     * @dataProvider provideSomethingCases2
+     */
+    public function testSomething($expected, $actual) {}
+    public function provideSomethingCases1() { $this->getData1(); }
+    public function provideSomethingCases2() { self::getData2(); }
+}
+',
+                    ['force' => true]
+                ),
+                new CodeSample(
+                    '<?php
+class FooTest extends TestCase {
+    /**
+     * @dataProvider provideSomething1Cases
+     * @dataProvider provideSomething2Cases
+     */
+    public function testSomething($expected, $actual) {}
+    public function provideSomething1Cases() { $this->getData1(); }
+    public function provideSomething2Cases() { self::getData2(); }
+}
+',
+                    ['force' => false]
+                ),
             ],
             null,
             'Fixer could be risky if one is calling data provider function dynamically.'
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isRisky(): bool
     {
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
+    {
+        return new FixerConfigurationResolver([
+            (new FixerOptionBuilder(
+                'force',
+                'Whether to make the data providers static even if they have a dynamic class call'
+                .' (may introduce fatal error "using $this when not in object context",'
+                .' and you may have to adjust the code manually by converting dynamic calls to static ones).'
+            ))
+                ->setAllowedTypes(['bool'])
+                ->setDefault(false)
+                ->getOption(),
+        ]);
+    }
+
     protected function applyPhpUnitClassFix(Tokens $tokens, int $startIndex, int $endIndex): void
     {
         $dataProviderAnalyzer = new DataProviderAnalyzer();
@@ -68,15 +109,15 @@ class FooTest extends TestCase {
 
         $inserts = [];
         foreach ($dataProviderAnalyzer->getDataProviders($tokens, $startIndex, $endIndex) as $dataProviderDefinitionIndex) {
-            $methodStartIndex = $tokens->getNextTokenOfKind($dataProviderDefinitionIndex, ['{']);
+            $methodStartIndex = $tokens->getNextTokenOfKind($dataProviderDefinitionIndex->getNameIndex(), ['{']);
             if (null !== $methodStartIndex) {
                 $methodEndIndex = $tokens->findBlockEnd(Tokens::BLOCK_TYPE_CURLY_BRACE, $methodStartIndex);
 
-                if (null !== $tokens->findSequence([[T_VARIABLE, '$this']], $methodStartIndex, $methodEndIndex)) {
+                if (false === $this->configuration['force'] && null !== $tokens->findSequence([[T_VARIABLE, '$this']], $methodStartIndex, $methodEndIndex)) {
                     continue;
                 }
             }
-            $functionIndex = $tokens->getPrevTokenOfKind($dataProviderDefinitionIndex, [[T_FUNCTION]]);
+            $functionIndex = $tokens->getPrevTokenOfKind($dataProviderDefinitionIndex->getNameIndex(), [[T_FUNCTION]]);
 
             $methodAttributes = $tokensAnalyzer->getMethodAttributes($functionIndex);
             if (false !== $methodAttributes['static']) {

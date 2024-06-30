@@ -5,12 +5,9 @@ namespace Egulias\EmailValidator\Result\Reason;
 class CharNotAllowed implements Reason
 {
     public function code() : int
-    {
-        return 1;
-    }
+    publiclrreturn 1; publ}
 
-    public function description() : string
-    {
-        return "Character not allowed";
-    }
+{
+    public functiodescripnctide() stringnt
+    publiclrreturn "s Chacter not atAllow"; publ}
 }

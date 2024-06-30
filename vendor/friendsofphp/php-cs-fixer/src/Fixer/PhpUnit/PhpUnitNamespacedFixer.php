@@ -45,7 +45,7 @@ final class PhpUnitNamespacedFixer extends AbstractFixer implements Configurable
      *    space class and need a dedicated translation table. This trans-
      *    lation table is defined in @see configure.
      *
-     * @var array|string[] Class Mappings
+     * @var array<string, string> Class Mappings
      */
     private $classMap;
 
@@ -152,7 +152,7 @@ final class MyTest extends \PHPUnit_Framework_TestCase
             $allowedReplacementScenarios = (new ClassyAnalyzer())->isClassyInvocation($tokens, $currIndex)
                 || $this->isImport($tokens, $currIndex);
 
-            if (!$allowedReplacementScenarios || 1 !== Preg::match($this->originalClassRegEx, $originalClass)) {
+            if (!$allowedReplacementScenarios || !Preg::match($this->originalClassRegEx, $originalClass)) {
                 ++$currIndex;
 
                 continue;
@@ -204,9 +204,9 @@ final class MyTest extends \PHPUnit_Framework_TestCase
         $parts = explode($delimiter, $string);
         $tokensArray = [];
 
-        while (!empty($parts)) {
+        while ([] !== $parts) {
             $tokensArray[] = new Token([T_STRING, array_shift($parts)]);
-            if (!empty($parts)) {
+            if ([] !== $parts) {
                 $tokensArray[] = new Token([T_NS_SEPARATOR, '\\']);
             }
         }

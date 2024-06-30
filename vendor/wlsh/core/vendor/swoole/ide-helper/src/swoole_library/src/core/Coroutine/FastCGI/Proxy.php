@@ -11,7 +11,6 @@ declare(strict_types=1);
 
 namespace Swoole\Coroutine\FastCGI;
 
-use InvalidArgumentException;
 use Swoole\FastCGI\HttpRequest;
 use Swoole\FastCGI\HttpResponse;
 use Swoole\Http;
@@ -45,8 +44,8 @@ class Proxy
     public function __construct(string $url, string $documentRoot = '/')
     {
         [$this->host, $this->port] = Client::parseUrl($url);
-        $this->documentRoot = $documentRoot;
-        $this->staticFileFilter = [$this, 'staticFileFiltrate'];
+        $this->documentRoot        = $documentRoot;
+        $this->staticFileFilter    = [$this, 'staticFileFiltrate'];
     }
 
     public function withTimeout(float $timeout): self
@@ -111,17 +110,17 @@ class Proxy
     {
         $request = new HttpRequest();
         if ($userRequest instanceof \Swoole\Http\Request) {
-            $server = $userRequest->server;
-            $headers = $userRequest->header;
+            $server   = $userRequest->server;
+            $headers  = $userRequest->header;
             $pathInfo = $userRequest->server['path_info'];
-            $pathInfo = '/' . (ltrim($pathInfo, '/'));
+            $pathInfo = '/' . ltrim($pathInfo, '/');
             if (strlen($this->index) !== 0) {
                 $extension = pathinfo($pathInfo, PATHINFO_EXTENSION);
                 if (empty($extension)) {
                     $pathInfo = rtrim($pathInfo, '/') . '/' . $this->index;
                 }
             }
-            $requestUri = $scriptName = $documentUri = $server['request_uri'];
+            $requestUri  = $scriptName = $documentUri = $server['request_uri'];
             $queryString = $server['query_string'] ?? '';
             if (strlen($queryString) !== 0) {
                 $requestUri .= "?{$server['query_string']}";
@@ -143,12 +142,13 @@ class Proxy
                 ->withContentLength((int) ($headers['content-length'] ?? 0))
                 ->withHeaders($headers)
                 ->withBody($userRequest->rawContent())
-                ->withAddedParams($this->params);
+                ->withAddedParams($this->params)
+            ;
             if ($this->https) {
                 $request->withParam('HTTPS', '1');
             }
         } else {
-            throw new InvalidArgumentException('Not supported on ' . get_class($userRequest));
+            throw new \InvalidArgumentException('Not supported on ' . $userRequest::class);
         }
         return $request;
     }
@@ -161,13 +161,13 @@ class Proxy
             $userResponse->cookie = $response->getSetCookieHeaderLines();
             $userResponse->end($response->getBody());
         } else {
-            throw new InvalidArgumentException('Not supported on ' . get_class($userResponse));
+            throw new \InvalidArgumentException('Not supported on ' . $userResponse::class);
         }
     }
 
     public function pass($userRequest, $userResponse): void
     {
-        if (!($userRequest instanceof HttpRequest)) {
+        if (!$userRequest instanceof HttpRequest) {
             $request = $this->translateRequest($userRequest);
         } else {
             $request = $userRequest;
@@ -179,7 +179,7 @@ class Proxy
                 return;
             }
         }
-        $client = new Client($this->host, $this->port);
+        $client   = new Client($this->host, $this->port);
         $response = $client->execute($request, $this->timeout);
         $this->translateResponse($response, $userResponse);
     }
@@ -191,7 +191,7 @@ class Proxy
             $extension = pathinfo($request->getScriptFilename(), PATHINFO_EXTENSION);
             if ($extension !== 'php') {
                 $realPath = realpath($request->getScriptFilename());
-                if (!$realPath || strpos($realPath, $this->documentRoot) !== 0 || !is_file($realPath)) {
+                if (!$realPath || !str_starts_with($realPath, $this->documentRoot) || !is_file($realPath)) {
                     $userResponse->status(Http\Status::NOT_FOUND);
                 } else {
                     $userResponse->sendfile($realPath);
@@ -200,6 +200,6 @@ class Proxy
             }
             return false;
         }
-        throw new InvalidArgumentException('Not supported on ' . get_class($userResponse));
+        throw new \InvalidArgumentException('Not supported on ' . $userResponse::class);
     }
 }

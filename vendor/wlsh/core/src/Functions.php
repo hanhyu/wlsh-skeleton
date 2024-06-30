@@ -1,11 +1,18 @@
 <?php
 declare(strict_types=1);
 
+use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Monolog\Processor\MemoryPeakUsageProcessor;
+use Monolog\Processor\MemoryUsageProcessor;
+use Monolog\Processor\ProcessIdProcessor;
+use Monolog\Processor\UidProcessor;
 use Swoole\Coroutine;
 use Swoole\Http\Request;
+use Wlsh\Context;
 use Wlsh\DI;
 use Wlsh\FormsVali;
+use Wlsh\ProgramException;
 use Wlsh\ValidateException;
 
 /**
@@ -15,6 +22,7 @@ use Wlsh\ValidateException;
  * @param array $validations
  *
  * @return array 返回验证过滤后的数据
+ * @throws ValidateException|ProgramException
  */
 function validator(Request $request, array $validations): array
 {
@@ -35,16 +43,15 @@ function validator(Request $request, array $validations): array
  */
 function post(Request $request): array
 {
-    $data = [];
+    $data         = [];
     $content_type = $request->header['content-type'] ?? 'x-www-form-urlencoded';
 
     if (str_contains($content_type, 'json')) {
         if (!empty($request->getContent())) {
-            try {
-                $data = json_decode($request->getContent(), true, 512, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-            } catch (JsonException) {
+            if (!json_validate($request->getContent())) {
                 throw new ProgramException('无法处理请求内容', 422);
             }
+            $data = json_decode($request->getContent(), true, 512, JSON_UNESCAPED_UNICODE);
         }
     } else if (!empty($request->post)) {
         $data = $request->post;
@@ -65,13 +72,13 @@ function post(Request $request): array
  */
 function httpJson(int $code = 200, string $msg = 'success', array $data = [], bool $vail = false): string
 {
-    $result = [];
+    $result         = [];
     $result['code'] = $code;
 
     //由于只是获取header中的language值，为静态值，所以这里无需考虑协程数据混乱问题。
     //$cid = Coroutine::getCid();
     //$lang_code = DI::factory()->get('request_obj' . $cid)->header['language'] ?? '';
-    $lang_code = Coroutine::getContext()->request->header['language'] ?? '';
+    $lang_code = Context::get('request')->header['language'] ?? '';
 
     //屏蔽中文简体
     if ('zh-cn' === $lang_code) {
@@ -85,16 +92,8 @@ function httpJson(int $code = 200, string $msg = 'success', array $data = [], bo
     }
 
     $result['data'] = $data;
-    try {
-        $res = json_encode($result, 320 | JSON_THROW_ON_ERROR);
-    } catch (Throwable $e) {
-        $result['code'] = 400;
-        $result['msg'] = $e->getMessage();
-        $result['data'] = [];
-        return json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-    }
-    //debug_print_backtrace();
-    return $res;
+
+    return json_encode($result, 320);
 }
 
 /**
@@ -109,11 +108,12 @@ function httpJson(int $code = 200, string $msg = 'success', array $data = [], bo
  */
 function wsJson(int $code = 200, string $msg = 'success', array $data = [], bool $vail = false): string
 {
-    $result = [];
+    $result         = [];
+    $ws_data        = Context::get('ws_data_arr');
     $result['code'] = $code;
-    $result['uri'] = DI::factory()->get('ws_data_arr' . Coroutine::getCid())['uri'] ?? '';
+    $result['uri']  = $ws_data['uri'] ?? '';
 
-    $lang_code = DI::factory()->get('ws_language_str');
+    $lang_code = $ws_data['language'] ?? '';
     if ('zh-cn' === $lang_code) {
         $vail = true;
     }
@@ -124,15 +124,8 @@ function wsJson(int $code = 200, string $msg = 'success', array $data = [], bool
     }
 
     $result['data'] = $data;
-    try {
-        $res = json_encode($result, 320 | JSON_THROW_ON_ERROR);
-    } catch (Throwable $e) {
-        $result['code'] = 400;
-        $result['msg'] = $e->getMessage();
-        $result['data'] = [];
-        return json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-    }
-    return $res;
+
+    return json_encode($result, 320);
 }
 
 /**
@@ -142,7 +135,7 @@ function wsJson(int $code = 200, string $msg = 'success', array $data = [], bool
 function wsPush(string $data): void
 {
     $server = DI::factory()->get('server_obj');
-    $fd = Coroutine::getContext()->fd;
+    $fd     = Context::get('fd');
 
     if ($server->isEstablished($fd)) {
         $server->push($fd, $data);
@@ -154,7 +147,7 @@ function wsPush(string $data): void
  *
  * @param array $server swoole_http_request->$server属性数组
  *
- * @return mixed|string
+ * @return string
  */
 function getIP(array $server): string
 {
@@ -181,13 +174,13 @@ function getIP(array $server): string
  */
 function sendEmail($content, string $info): void
 {
-    $email = DI::factory()->get('email_config_arr');
+    $email     = DI::factory()->get('email_config_arr');
     $transport = (new Swift_SmtpTransport($email['host'], $email['port']))
         ->setUsername($email['uname'])
         ->setPassword($email['pwd']);
 
-    $mailer = new Swift_Mailer($transport);
-    $body = $info . '<br />' . $content . '<br />记录时间：' . date('Y-m-d H:i:s');
+    $mailer  = new Swift_Mailer($transport);
+    $body    = $info . '<br />' . $content . '<br />记录时间：' . date('Y-m-d H:i:s');
     $message = (new Swift_Message($email['subject']))
         ->setFrom($email['from'])
         ->setTo($email['to'])
@@ -246,10 +239,10 @@ function monologByFile($content, string $info, string $channel, string $level): 
 function taskLog($data, string $info, string $channel = 'system', string $level = 'info'): void
 {
     DI::factory()->get('server_obj')->task(serialize([
-        'uri' => '/task/log/index',
-        'info' => $info,
+        'uri'     => '/task/log/index',
+        'info'    => $info,
         'channel' => $channel,
-        'level' => $level,
+        'level'   => $level,
         'content' => $data
     ]));
 }
@@ -267,17 +260,17 @@ function routerLog(Request $request, string $level = 'info', string $resp_data =
 
     //todo 取请求对象指定参数值，如DEBUG=true
     //if ($request->header['DEBUG']) {
-    $request_data['trace_id'] = Coroutine::getContext()->trace_id;
+    $request_data['trace_id']   = Context::get('trace_id');
     $request_data['req_method'] = $request->server['request_method'];
-    $request_data['req_uri'] = $request->server['request_uri'];
-    $request_data['req_data'] = $request->getMethod() == 'GET' ? $request->get : post($request);
-    $request_data['req_ip'] = getIP($request->server);
-    $request_data['fd_time'] = $server->getClientInfo($request->fd)['last_time'] ?? time();
-    $request_data['req_time'] = $request->server['request_time'];
-    $request_data['resp_time'] = time();
-    $request_data['resp_data'] = $resp_data;
-    $request_data['level'] = $level;
-    $request_data['uri'] = '/task/log/routerLog';
+    $request_data['req_uri']    = $request->server['request_uri'];
+    $request_data['req_data']   = $request->getMethod() == 'GET' ? $request->get : post($request);
+    $request_data['req_ip']     = getIP($request->server);
+    $request_data['fd_time']    = $server->getClientInfo($request->fd)['last_time'] ?? time();
+    $request_data['req_time']   = $request->server['request_time'];
+    $request_data['resp_time']  = time();
+    $request_data['resp_data']  = $resp_data;
+    $request_data['level']      = $level;
+    $request_data['uri']        = '/task/log/routerLog';
     $server->task(serialize($request_data));
     //}
 }
@@ -358,8 +351,8 @@ function tokenEncode(array $params): string
  */
 function tokenDecode(string $auth): array
 {
-    $data = [];
-    $token = base64_decode($auth);
+    $data      = [];
+    $token     = base64_decode($auth);
     $decrypted = openssl_decrypt(
         $token,
         'aes-256-cbc',
@@ -414,7 +407,7 @@ function sign(int $cid, string $data): void
 function privateEncrypt(string $data, string $prv_key): string
 {
     $encrypted = '';
-    $key = openssl_pkey_get_private($prv_key);
+    $key       = openssl_pkey_get_private($prv_key);
     openssl_private_encrypt($data, $encrypted, $key);
     return base64_encode($encrypted);
 }
@@ -430,7 +423,7 @@ function privateEncrypt(string $data, string $prv_key): string
 function privateDecrypt(string $data, string $prv_key): string
 {
     $decrypted = '';
-    $key = openssl_pkey_get_private($prv_key);
+    $key       = openssl_pkey_get_private($prv_key);
     openssl_private_decrypt(base64_decode($data), $decrypted, $key);
     return $decrypted;
 }
@@ -446,7 +439,7 @@ function privateDecrypt(string $data, string $prv_key): string
 function publicEncrypt(string $data, string $pub_key): string
 {
     $encrypted = '';
-    $key = openssl_pkey_get_public($pub_key);
+    $key       = openssl_pkey_get_public($pub_key);
     openssl_public_encrypt($data, $encrypted, $key);
     return base64_encode($encrypted);
 }
@@ -462,7 +455,7 @@ function publicEncrypt(string $data, string $pub_key): string
 function publicDecrypt(string $data, string $pub_key): string
 {
     $decrypted = '';
-    $key = openssl_pkey_get_public($pub_key);
+    $key       = openssl_pkey_get_public($pub_key);
     openssl_public_decrypt(base64_decode($data), $decrypted, $key);
     return $decrypted;
 }
@@ -489,7 +482,7 @@ function isMobile(string $text): bool
  *
  * @return false|int
  */
-function isMd5($password)
+function isMd5($password): false|int
 {
     return preg_match('/^[a-f0-9]{32}$/', $password);
 }
@@ -508,9 +501,28 @@ function isMd5($password)
 function arrayToPageData(array $array_data = [], int $page = 1, int $page_size = 10): array
 {
     $array_data = array_values($array_data);
-    $page_data['list'] = array_slice($array_data, ($page - 1) * $page_size, $page_size);
-    $page_data['pagination']['total'] = count($array_data);
-    $page_data['pagination']['current_page'] = count($array_data);
+
+    $page_data['list']                         = array_slice($array_data, ($page - 1) * $page_size, $page_size);
+    $page_data['pagination']['total']          = count($array_data);
+    $page_data['pagination']['current_page']   = count($array_data);
     $page_data['pagination']['pre_page_count'] = $page_size;
+
     return $page_data;
+}
+
+/**
+ * 把frame_system_menu格式转换成FrameSystemMenu
+ *
+ * @param string $input
+ * @return string
+ */
+function toPascalCase(string $input): string
+{
+    $words = explode('_', $input);
+
+    $capitalizedWords = array_map(function ($word) {
+        return ucfirst($word);
+    }, $words);
+
+    return implode('', $capitalizedWords);
 }

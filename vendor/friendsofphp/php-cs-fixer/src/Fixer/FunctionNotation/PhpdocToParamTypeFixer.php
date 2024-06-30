@@ -16,6 +16,7 @@ namespace PhpCsFixer\Fixer\FunctionNotation;
 
 use PhpCsFixer\AbstractPhpdocToTypeDeclarationFixer;
 use PhpCsFixer\DocBlock\Annotation;
+use PhpCsFixer\Fixer\ExperimentalFixerInterface;
 use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
@@ -25,8 +26,10 @@ use PhpCsFixer\Tokenizer\Tokens;
 /**
  * @author Jan Gantzert <jan@familie-gantzert.de>
  */
-final class PhpdocToParamTypeFixer extends AbstractPhpdocToTypeDeclarationFixer
+final class PhpdocToParamTypeFixer extends AbstractPhpdocToTypeDeclarationFixer implements ExperimentalFixerInterface
 {
+    private const TYPE_CHECK_TEMPLATE = '<?php function f(%s $x) {}';
+
     /**
      * @var array{int, string}[]
      */
@@ -39,7 +42,6 @@ final class PhpdocToParamTypeFixer extends AbstractPhpdocToTypeDeclarationFixer
      * @var array<string, true>
      */
     private const SKIPPED_TYPES = [
-        'mixed' => true,
         'resource' => true,
         'static' => true,
         'void' => true,
@@ -48,7 +50,7 @@ final class PhpdocToParamTypeFixer extends AbstractPhpdocToTypeDeclarationFixer
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
-            'EXPERIMENTAL: Takes `@param` annotations of non-mixed types and adjusts accordingly the function signature. Requires PHP >= 7.0.',
+            'Takes `@param` annotations of non-mixed types and adjusts accordingly the function signature. Requires PHP >= 7.0.',
             [
                 new CodeSample(
                     '<?php
@@ -71,15 +73,25 @@ function bar($foo) {}
 ',
                     ['scalar_types' => false]
                 ),
+                new CodeSample(
+                    '<?php
+
+/** @param Foo $foo */
+function foo($foo) {}
+/** @param int|string $foo */
+function bar($foo) {}
+',
+                    ['union_types' => false]
+                ),
             ],
             null,
-            'This rule is EXPERIMENTAL and [1] is not covered with backward compatibility promise. [2] `@param` annotation is mandatory for the fixer to make changes, signatures of methods without it (no docblock, inheritdocs) will not be fixed. [3] Manual actions are required if inherited signatures are not properly documented.'
+            'The `@param` annotation is mandatory for the fixer to make changes, signatures of methods without it (no docblock, inheritdocs) will not be fixed. Manual actions are required if inherited signatures are not properly documented.'
         );
     }
 
     public function isCandidate(Tokens $tokens): bool
     {
-        return $tokens->isTokenKindFound(T_FUNCTION);
+        return $tokens->isAnyTokenKindsFound([T_FUNCTION, T_FN]);
     }
 
     /**
@@ -101,7 +113,7 @@ function bar($foo) {}
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         for ($index = $tokens->count() - 1; 0 < $index; --$index) {
-            if (!$tokens[$index]->isGivenKind(T_FUNCTION)) {
+            if (!$tokens[$index]->isGivenKind([T_FUNCTION, T_FN])) {
                 continue;
             }
 
@@ -117,13 +129,34 @@ function bar($foo) {}
             }
 
             foreach ($this->getAnnotationsFromDocComment('param', $tokens, $docCommentIndex) as $paramTypeAnnotation) {
-                $typeInfo = $this->getCommonTypeFromAnnotation($paramTypeAnnotation, false);
+                $typesExpression = $paramTypeAnnotation->getTypeExpression();
 
-                if (null === $typeInfo) {
+                if (null === $typesExpression) {
                     continue;
                 }
 
-                [$paramType, $isNullable] = $typeInfo;
+                $typeInfo = $this->getCommonTypeInfo($typesExpression, false);
+                $unionTypes = null;
+
+                if (null === $typeInfo) {
+                    $unionTypes = $this->getUnionTypes($typesExpression, false);
+                }
+
+                if (null === $typeInfo && null === $unionTypes) {
+                    continue;
+                }
+
+                if (null !== $typeInfo) {
+                    $paramType = $typeInfo['commonType'];
+                    $isNullable = $typeInfo['isNullable'];
+                } elseif (null !== $unionTypes) {
+                    $paramType = $unionTypes;
+                    $isNullable = false;
+                }
+
+                if (!isset($paramType, $isNullable)) {
+                    continue;
+                }
 
                 $startIndex = $tokens->getNextTokenOfKind($index, ['(']);
                 $variableIndex = $this->findCorrectVariable($tokens, $startIndex, $paramTypeAnnotation);
@@ -142,7 +175,7 @@ function bar($foo) {}
                     continue;
                 }
 
-                if (!$this->isValidSyntax(sprintf('<?php function f(%s $x) {}', $paramType))) {
+                if (!$this->isValidSyntax(sprintf(self::TYPE_CHECK_TEMPLATE, $paramType))) {
                     continue;
                 }
 
@@ -152,6 +185,16 @@ function bar($foo) {}
                 ));
             }
         }
+    }
+
+    protected function createTokensFromRawType(string $type): Tokens
+    {
+        $typeTokens = Tokens::fromCode(sprintf(self::TYPE_CHECK_TEMPLATE, $type));
+        $typeTokens->clearRange(0, 4);
+        $typeTokens->clearRange(\count($typeTokens) - 6, \count($typeTokens) - 1);
+        $typeTokens->clearEmptyTokens();
+
+        return $typeTokens;
     }
 
     private function findCorrectVariable(Tokens $tokens, int $startIndex, Annotation $paramTypeAnnotation): ?int

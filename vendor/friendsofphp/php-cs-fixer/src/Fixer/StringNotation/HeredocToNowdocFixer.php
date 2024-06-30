@@ -34,11 +34,11 @@ final class HeredocToNowdocFixer extends AbstractFixer
             [
                 new CodeSample(
                     <<<'EOF'
-<?php $a = <<<"TEST"
-Foo
-TEST;
+                        <?php $a = <<<"TEST"
+                        Foo
+                        TEST;
 
-EOF
+                        EOF
                 ),
             ]
         );
@@ -47,7 +47,7 @@ EOF
     /**
      * {@inheritdoc}
      *
-     * Must run after EscapeImplicitBackslashesFixer.
+     * Must run after EscapeImplicitBackslashesFixer, StringImplicitBackslashesFixer.
      */
     public function getPriority(): int
     {

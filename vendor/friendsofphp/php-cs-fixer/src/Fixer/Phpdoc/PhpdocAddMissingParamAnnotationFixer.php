@@ -160,7 +160,7 @@ function f9(string $foo, $bar, $baz) {}
             foreach ($doc->getAnnotationsOfType('param') as $annotation) {
                 $pregMatched = Preg::match('/^[^$]+(\$\w+).*$/s', $annotation->getContent(), $matches);
 
-                if (1 === $pregMatched) {
+                if ($pregMatched) {
                     unset($arguments[$matches[1]]);
                 }
 
@@ -180,7 +180,7 @@ function f9(string $foo, $bar, $baz) {}
             $newLines = [];
 
             foreach ($arguments as $argument) {
-                $type = $argument['type'] ?: 'mixed';
+                $type = '' !== $argument['type'] ? $argument['type'] : 'mixed';
 
                 if (!str_starts_with($type, '?') && 'null' === strtolower($argument['default'])) {
                     $type = 'null|'.$type;
@@ -197,7 +197,7 @@ function f9(string $foo, $bar, $baz) {}
 
             array_splice(
                 $lines,
-                $lastParamLine ? $lastParamLine + 1 : $linesCount - 1,
+                $lastParamLine > 0 ? $lastParamLine + 1 : $linesCount - 1,
                 0,
                 $newLines
             );

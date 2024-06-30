@@ -32,7 +32,7 @@ return [
             '/conf/sendEmail.php',
         ],
         'setWritable' => [
-            'Log',
+            'log',
         ],
     ],
 ];

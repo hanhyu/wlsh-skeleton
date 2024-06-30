@@ -33,9 +33,6 @@ use PhpCsFixer\Tokenizer\Tokens;
  */
 final class GeneralPhpdocAnnotationRemoveFixer extends AbstractFixer implements ConfigurableFixerInterface
 {
-    /**
-     * {@inheritdoc}
-     */
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
@@ -90,17 +87,11 @@ function foo() {}
         return 10;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCandidate(Tokens $tokens): bool
     {
         return $tokens->isTokenKindFound(T_DOC_COMMENT);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applyFix(\SplFileInfo $file, Tokens $tokens): void
     {
         if (0 === \count($this->configuration['annotations'])) {
@@ -132,9 +123,6 @@ function foo() {}
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
@@ -158,9 +146,7 @@ function foo() {}
             return $doc->getAnnotationsOfType($this->configuration['annotations']);
         }
 
-        $typesToSearchFor = array_map(function (string $type): string {
-            return strtolower($type);
-        }, $this->configuration['annotations']);
+        $typesToSearchFor = array_map(static fn (string $type): string => strtolower($type), $this->configuration['annotations']);
 
         $annotations = [];
 

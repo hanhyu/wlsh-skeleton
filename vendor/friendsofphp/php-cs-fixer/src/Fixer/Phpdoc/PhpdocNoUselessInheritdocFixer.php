@@ -115,15 +115,13 @@ final class PhpdocNoUselessInheritdocFixer extends AbstractFixer
         $count = 0;
         $content = Preg::replaceCallback(
             '#(\h*(?:@{*|{*\h*@)\h*inheritdoc\h*)([^}]*)((?:}*)\h*)#i',
-            static function (array $matches): string {
-                return ' '.$matches[2];
-            },
+            static fn (array $matches): string => ' '.$matches[2],
             $tokens[$tokenIndex]->getContent(),
             -1,
             $count
         );
 
-        if ($count) {
+        if ($count > 0) {
             $tokens[$tokenIndex] = new Token([T_DOC_COMMENT, $content]);
         }
     }

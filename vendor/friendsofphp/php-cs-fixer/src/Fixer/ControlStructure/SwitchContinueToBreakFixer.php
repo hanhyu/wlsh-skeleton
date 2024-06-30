@@ -25,7 +25,7 @@ use PhpCsFixer\Tokenizer\Tokens;
 final class SwitchContinueToBreakFixer extends AbstractFixer
 {
     /**
-     * @var int[]
+     * @var list<int>
      */
     private array $switchLevels = [];
 
@@ -204,7 +204,7 @@ switch ($foo) {
             $jump = bindec($jump); // binary - 0b1
         } elseif (\strlen($jump) > 1 && '0' === $jump[0]) {
             $jump = octdec($jump); // octal 01
-        } elseif (1 === Preg::match('#^\d+$#', $jump)) { // positive int
+        } elseif (Preg::match('#^\d+$#', $jump)) { // positive int
             $jump = (float) $jump; // cast to float, might be a number bigger than PHP max. int value
         } else {
             return $afterFollowingContinueIndex; // cannot process value, ignore

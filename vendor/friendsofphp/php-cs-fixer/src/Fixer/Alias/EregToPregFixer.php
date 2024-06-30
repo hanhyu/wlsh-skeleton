@@ -97,7 +97,7 @@ final class EregToPregFixer extends AbstractFixer
 
                 // findSequence also returns the tokens, but we're only interested in the indices, i.e.:
                 // 0 => function name,
-                // 1 => bracket "("
+                // 1 => parenthesis "("
                 // 2 => quoted string passed as 1st parameter
                 $match = array_keys($match);
 
@@ -188,6 +188,6 @@ final class EregToPregFixer extends AbstractFixer
             return $a[0] <=> $b[0];
         });
 
-        return key($delimiters);
+        return array_key_first($delimiters);
     }
 }

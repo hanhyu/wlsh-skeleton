@@ -340,8 +340,6 @@ class Db
         $sets = [];
         foreach ($data as $key => $value) {
             $sets[] = "$key = ?";
-            //todo 这里是否不需要加入
-            $this->params[] = $value;
         }
         $where     = empty($this->where) ? "" : "WHERE " . implode(" AND ", $this->where);
         $this->sql = "UPDATE {$this->table} SET " . implode(",", $sets) . " {$where}";

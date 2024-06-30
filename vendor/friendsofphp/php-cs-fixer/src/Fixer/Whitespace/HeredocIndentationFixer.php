@@ -20,10 +20,9 @@ use PhpCsFixer\Fixer\WhitespacesAwareFixerInterface;
 use PhpCsFixer\FixerConfiguration\FixerConfigurationResolver;
 use PhpCsFixer\FixerConfiguration\FixerConfigurationResolverInterface;
 use PhpCsFixer\FixerConfiguration\FixerOptionBuilder;
+use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
-use PhpCsFixer\FixerDefinition\VersionSpecification;
-use PhpCsFixer\FixerDefinition\VersionSpecificCodeSample;
 use PhpCsFixer\Preg;
 use PhpCsFixer\Tokenizer\Analyzer\WhitespacesAnalyzer;
 use PhpCsFixer\Tokenizer\Token;
@@ -37,43 +36,33 @@ final class HeredocIndentationFixer extends AbstractFixer implements Configurabl
     public function getDefinition(): FixerDefinitionInterface
     {
         return new FixerDefinition(
-            'Heredoc/nowdoc content must be properly indented. Requires PHP >= 7.3.',
+            'Heredoc/nowdoc content must be properly indented.',
             [
-                new VersionSpecificCodeSample(
+                new CodeSample(
                     <<<'SAMPLE'
-<?php
-    $a = <<<EOD
-abc
-    def
-EOD;
+                        <?php
+                            $heredoc = <<<EOD
+                        abc
+                            def
+                        EOD;
 
-SAMPLE
-                    ,
-                    new VersionSpecification(7_03_00)
+                            $nowdoc = <<<'EOD'
+                        abc
+                            def
+                        EOD;
+
+                        SAMPLE
                 ),
-                new VersionSpecificCodeSample(
+                new CodeSample(
                     <<<'SAMPLE'
-<?php
-    $a = <<<'EOD'
-abc
-    def
-EOD;
+                        <?php
+                            $nowdoc = <<<'EOD'
+                        abc
+                            def
+                        EOD;
 
-SAMPLE
+                        SAMPLE
                     ,
-                    new VersionSpecification(7_03_00)
-                ),
-                new VersionSpecificCodeSample(
-                    <<<'SAMPLE'
-<?php
-    $a = <<<'EOD'
-abc
-    def
-EOD;
-
-SAMPLE
-                    ,
-                    new VersionSpecification(7_03_00),
                     ['indentation' => 'same_as_start']
                 ),
             ]
@@ -83,7 +72,7 @@ SAMPLE
     /**
      * {@inheritdoc}
      *
-     * Must run after BracesFixer, StatementIndentationFixer.
+     * Must run after BracesFixer, MultilineStringToHeredocFixer, StatementIndentationFixer.
      */
     public function getPriority(): int
     {
@@ -138,7 +127,9 @@ SAMPLE
             return;
         }
 
-        for ($index = $end - 1, $last = true; $index > $start; --$index, $last = false) {
+        $index = $end - 1;
+
+        for ($last = true; $index > $start; --$index, $last = false) {
             if (!$tokens[$index]->isGivenKind([T_ENCAPSED_AND_WHITESPACE, T_WHITESPACE])) {
                 continue;
             }
@@ -149,7 +140,7 @@ SAMPLE
                 $content = Preg::replace('/(?<=\v)(?!'.$currentIndent.')\h+/', '', $content);
             }
 
-            $regexEnd = $last && !$currentIndent ? '(?!\v|$)' : '(?!\v)';
+            $regexEnd = $last && '' === $currentIndent ? '(?!\v|$)' : '(?!\v)';
             $content = Preg::replace('/(?<=\v)'.$currentIndent.$regexEnd.'/', $indent, $content);
 
             $tokens[$index] = new Token([$tokens[$index]->getId(), $content]);
@@ -165,9 +156,9 @@ SAMPLE
 
         $content = $tokens[$index]->getContent();
 
-        if (!\in_array($content[0], ["\r", "\n"], true) && (!$currentIndent || str_starts_with($content, $currentIndent))) {
+        if (!\in_array($content[0], ["\r", "\n"], true) && ('' === $currentIndent || str_starts_with($content, $currentIndent))) {
             $content = $indent.substr($content, $currentIndentLength);
-        } elseif ($currentIndent) {
+        } elseif ('' !== $currentIndent) {
             $content = Preg::replace('/^(?!'.$currentIndent.')\h+/', '', $content);
         }
 

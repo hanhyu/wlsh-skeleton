@@ -72,7 +72,7 @@ final class SimplifiedIfReturnFixer extends AbstractFixer
      * {@inheritdoc}
      *
      * Must run before MultilineWhitespaceBeforeSemicolonsFixer, NoSinglelineWhitespaceBeforeSemicolonsFixer.
-     * Must run after NoSuperfluousElseifFixer, NoUnneededCurlyBracesFixer, NoUselessElseFixer, SemicolonAfterInstructionFixer.
+     * Must run after NoSuperfluousElseifFixer, NoUnneededBracesFixer, NoUnneededCurlyBracesFixer, NoUselessElseFixer, SemicolonAfterInstructionFixer.
      */
     public function getPriority(): int
     {
@@ -106,7 +106,7 @@ final class SimplifiedIfReturnFixer extends AbstractFixer
                     continue;
                 }
 
-                $firstSequenceIndex = key($sequenceFound);
+                $firstSequenceIndex = array_key_first($sequenceFound);
 
                 if ($firstSequenceIndex !== $firstCandidateIndex) {
                     continue;

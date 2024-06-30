@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modules\System\Controllers;
 
 use Domain\System\MenuDomain;
-use Models\Forms\SystemMenuForms;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Wlsh\DI;
@@ -23,8 +22,13 @@ class MenuController
     #[Router(method: 'GET', auth: false)]
     public function getMenuListAction(Request $request, Response $response): void
     {
-        $data = validator($request, SystemMenuForms::$getMenuList);
+        $data = validator($request,[
+            'curr_page' => 'Required|IntGe:1|Alias:当前页',
+            'page_size' => 'Required|IntGe:1|Alias:每页显示多少条',
+        ]);
+
         $res  = $this->menu->getList($data);
+
         $response->end(httpJson(data: $res));
     }
 

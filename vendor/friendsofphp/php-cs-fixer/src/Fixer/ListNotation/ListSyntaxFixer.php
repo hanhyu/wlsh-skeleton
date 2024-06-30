@@ -35,9 +35,7 @@ final class ListSyntaxFixer extends AbstractFixer implements ConfigurableFixerIn
     private $candidateTokenKind;
 
     /**
-     * Use 'syntax' => 'long'|'short'.
-     *
-     * @param array<string, string> $configuration
+     * @param array{syntax: 'long'|'short'} $configuration
      *
      * @throws InvalidFixerConfigurationException
      */
@@ -71,7 +69,7 @@ final class ListSyntaxFixer extends AbstractFixer implements ConfigurableFixerIn
      */
     public function getPriority(): int
     {
-        return 1;
+        return 2;
     }
 
     public function isCandidate(Tokens $tokens): bool
@@ -95,7 +93,7 @@ final class ListSyntaxFixer extends AbstractFixer implements ConfigurableFixerIn
     protected function createConfigurationDefinition(): FixerConfigurationResolverInterface
     {
         return new FixerConfigurationResolver([
-            (new FixerOptionBuilder('syntax', 'Whether to use the `long` or `short` `list` syntax.'))
+            (new FixerOptionBuilder('syntax', 'Whether to use the `long` or `short` syntax for array destructuring.'))
                 ->setAllowedValues(['long', 'short'])
                 ->setDefault('short')
                 ->getOption(),

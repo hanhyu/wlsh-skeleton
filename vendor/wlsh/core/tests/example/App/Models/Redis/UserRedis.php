@@ -10,12 +10,6 @@ class UserRedis extends AbstractRedis
 {
     protected static int $db_index = 1;
 
-    public static function setDb(): string
-    {
-        // TODO: Implement setDb() method.
-        return '';
-    }
-
     /**
      * @throws RedisException
      */

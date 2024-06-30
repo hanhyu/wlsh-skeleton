@@ -33,7 +33,7 @@ use PhpCsFixer\Tokenizer\Tokens;
 final class PhpUnitConstructFixer extends AbstractPhpUnitFixer implements ConfigurableFixerInterface
 {
     /**
-     * @var array<string,string>
+     * @var array<string, string>
      */
     private static array $assertionFixers = [
         'assertSame' => 'fixAssertPositive',
@@ -96,7 +96,7 @@ final class FooTest extends \PHPUnit_Framework_TestCase {
     protected function applyPhpUnitClassFix(Tokens $tokens, int $startIndex, int $endIndex): void
     {
         // no assertions to be fixed - fast return
-        if (empty($this->configuration['assertions'])) {
+        if ([] === $this->configuration['assertions']) {
             return;
         }
 

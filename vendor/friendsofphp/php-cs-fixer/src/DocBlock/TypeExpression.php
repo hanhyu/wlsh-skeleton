@@ -20,6 +20,8 @@ use PhpCsFixer\Tokenizer\Analyzer\Analysis\NamespaceUseAnalysis;
 use PhpCsFixer\Utils;
 
 /**
+ * @author Michael Vorisek <https://github.com/mvorisek>
+ *
  * @internal
  */
 final class TypeExpression
@@ -44,6 +46,11 @@ final class TypeExpression
         )*+
     )';
 
+    /**
+     * Based on:
+     * - https://github.com/phpstan/phpdoc-parser/blob/1.26.0/doc/grammars/type.abnf fuzzing grammar
+     * - and https://github.com/phpstan/phpdoc-parser/blob/1.26.0/src/Parser/PhpDocParser.php parser impl.
+     */
     private const REGEX_TYPE = '(?<type>(?x) # single type
             (?<nullable>\??\h*)
             (?:
@@ -51,20 +58,45 @@ final class TypeExpression
                     (?<array_shape_start>(?i)(?:array|list|object)(?-i)\h*\{\h*)
                     (?<array_shape_inners>
                         (?<array_shape_inner>
-                            (?<array_shape_inner_key>(?:(?&constant)|(?&identifier))\h*\??\h*:\h*|)
+                            (?<array_shape_inner_key>(?:(?&constant)|(?&identifier)|(?&name))\h*\??\h*:\h*|)
                             (?<array_shape_inner_value>(?&types_inner))
                         )
                         (?:
                             \h*,\h*
                             (?&array_shape_inner)
-                        )*
+                        )*+
                         (?:\h*,\h*)?
                     |)
                     \h*\}
                 )
                 |
-                (?<callable> # callable syntax, e.g. `callable(string, int...): bool`
-                    (?<callable_start>(?&name)\h*\(\h*)
+                (?<callable> # callable syntax, e.g. `callable(string, int...): bool`, `\Closure<T>(T, int): T`
+                    (?<callable_name>(?&name))
+                    (?<callable_template>
+                        (?<callable_template_start>\h*<\h*)
+                        (?<callable_template_inners>
+                            (?<callable_template_inner>
+                                (?<callable_template_inner_name>
+                                    (?&identifier)
+                                )
+                                (?<callable_template_inner_b> # template bound
+                                    \h+(?i)(?<callable_template_inner_b_kw>of|as)(?-i)\h+
+                                    (?<callable_template_inner_b_types>(?&types_inner))
+                                |)
+                                (?<callable_template_inner_d> # template default
+                                    \h*=\h*
+                                    (?<callable_template_inner_d_types>(?&types_inner))
+                                |)
+                            )
+                            (?:
+                                \h*,\h*
+                                (?&callable_template_inner)
+                            )*+
+                        )
+                        \h*>
+                        (?=\h*\()
+                    |)
+                    (?<callable_start>\h*\(\h*)
                     (?<callable_arguments>
                         (?<callable_argument>
                             (?<callable_argument_type>(?&types_inner))
@@ -76,7 +108,7 @@ final class TypeExpression
                         (?:
                             \h*,\h*
                             (?&callable_argument)
-                        )*
+                        )*+
                         (?:\h*,\h*)?
                     |)
                     \h*\)
@@ -93,7 +125,7 @@ final class TypeExpression
                         (?:
                             \h*,\h*
                             (?&types_inner)
-                        )*
+                        )*+
                         (?:\h*,\h*)?
                     )
                     \h*>
@@ -164,13 +196,13 @@ final class TypeExpression
                 (\h*\[\h*\])*
             )
             (?:(?=1)0
-                (?<types_inner>
+                (?<types_inner>(?>
                     (?&type)
                     (?:
                         \h*[|&]\h*
                         (?&type)
                     )*+
-                )
+                ))
             |)
         )';
 
@@ -210,7 +242,7 @@ final class TypeExpression
     }
 
     /**
-     * @return string[]
+     * @return list<string>
      */
     public function getTypes(): array
     {
@@ -224,10 +256,20 @@ final class TypeExpression
         return [$this->value];
     }
 
+    public function isUnionType(): bool
+    {
+        return $this->isUnionType;
+    }
+
+    public function getTypesGlue(): string
+    {
+        return $this->typesGlue;
+    }
+
     /**
-     * @param callable(self $a, self $b): int $compareCallback
+     * @param \Closure(self): void $callback
      */
-    public function sortTypes(callable $compareCallback): void
+    public function walkTypes(\Closure $callback): void
     {
         foreach (array_reverse($this->innerTypeExpressions) as [
             'start_index' => $startIndex,
@@ -235,7 +277,7 @@ final class TypeExpression
         ]) {
             $initialValueLength = \strlen($inner->toString());
 
-            $inner->sortTypes($compareCallback);
+            $inner->walkTypes($callback);
 
             $this->value = substr_replace(
                 $this->value,
@@ -245,20 +287,25 @@ final class TypeExpression
             );
         }
 
-        if ($this->isUnionType) {
-            $this->innerTypeExpressions = Utils::stableSort(
-                $this->innerTypeExpressions,
-                static fn (array $type): self => $type['expression'],
-                $compareCallback,
-            );
-
-            $this->value = implode($this->getTypesGlue(), $this->getTypes());
-        }
+        $callback($this);
     }
 
-    public function getTypesGlue(): string
+    /**
+     * @param \Closure(self, self): (-1|0|1) $compareCallback
+     */
+    public function sortTypes(\Closure $compareCallback): void
     {
-        return $this->typesGlue;
+        $this->walkTypes(static function (self $type) use ($compareCallback): void {
+            if ($type->isUnionType) {
+                $type->innerTypeExpressions = Utils::stableSort(
+                    $type->innerTypeExpressions,
+                    static fn (array $type): self => $type['expression'],
+                    $compareCallback,
+                );
+
+                $type->value = implode($type->getTypesGlue(), $type->getTypes());
+            }
+        });
     }
 
     public function getCommonType(): ?string
@@ -276,9 +323,9 @@ final class TypeExpression
                 $type = substr($type, 1);
             }
 
-            if (1 === Preg::match('/\[\h*\]$/', $type)) {
+            if (Preg::match('/\[\h*\]$/', $type)) {
                 $type = 'array';
-            } elseif (1 === Preg::match('/^(.+?)\h*[<{(]/', $type, $matches)) {
+            } elseif (Preg::match('/^(.+?)\h*[<{(]/', $type, $matches)) {
                 $type = $matches[1];
             }
 
@@ -360,8 +407,16 @@ final class TypeExpression
                 $matches['generic_types'][0]
             );
         } elseif ('' !== ($matches['callable'][0] ?? '') && $matches['callable'][1] === $nullableLength) {
+            $this->parseCallableTemplateInnerTypes(
+                $index + \strlen($matches['callable_name'][0])
+                    + \strlen($matches['callable_template_start'][0]),
+                $matches['callable_template_inners'][0]
+            );
+
             $this->parseCallableArgumentTypes(
-                $index + \strlen($matches['callable_start'][0]),
+                $index + \strlen($matches['callable_name'][0])
+                    + \strlen($matches['callable_template'][0])
+                    + \strlen($matches['callable_start'][0]),
                 $matches['callable_arguments'][0]
             );
 
@@ -437,6 +492,49 @@ final class TypeExpression
         }
     }
 
+    private function parseCallableTemplateInnerTypes(int $startIndex, string $value): void
+    {
+        $index = 0;
+        while (\strlen($value) !== $index) {
+            Preg::match(
+                '{\G(?:(?=1)0'.self::REGEX_TYPES.'|(?<_callable_template_inner>(?&callable_template_inner))(?:\h*,\h*|$))}',
+                $value,
+                $prematches,
+                0,
+                $index
+            );
+            $consumedValue = $prematches['_callable_template_inner'];
+            $consumedValueLength = \strlen($consumedValue);
+            $consumedCommaLength = \strlen($prematches[0]) - $consumedValueLength;
+
+            $addedPrefix = 'Closure<';
+            Preg::match(
+                '{^'.self::REGEX_TYPES.'$}',
+                $addedPrefix.$consumedValue.'>(): void',
+                $matches,
+                PREG_OFFSET_CAPTURE
+            );
+
+            if ('' !== $matches['callable_template_inner_b'][0]) {
+                $this->innerTypeExpressions[] = [
+                    'start_index' => $startIndex + $index + $matches['callable_template_inner_b_types'][1]
+                        - \strlen($addedPrefix),
+                    'expression' => $this->inner($matches['callable_template_inner_b_types'][0]),
+                ];
+            }
+
+            if ('' !== $matches['callable_template_inner_d'][0]) {
+                $this->innerTypeExpressions[] = [
+                    'start_index' => $startIndex + $index + $matches['callable_template_inner_d_types'][1]
+                        - \strlen($addedPrefix),
+                    'expression' => $this->inner($matches['callable_template_inner_d_types'][0]),
+                ];
+            }
+
+            $index += $consumedValueLength + $consumedCommaLength;
+        }
+    }
+
     private function parseCallableArgumentTypes(int $startIndex, string $value): void
     {
         $index = 0;
@@ -493,7 +591,8 @@ final class TypeExpression
             );
 
             $this->innerTypeExpressions[] = [
-                'start_index' => $startIndex + $index + $matches['array_shape_inner_value'][1] - \strlen($addedPrefix),
+                'start_index' => $startIndex + $index + $matches['array_shape_inner_value'][1]
+                    - \strlen($addedPrefix),
                 'expression' => $this->inner($matches['array_shape_inner_value'][0]),
             ];
 
@@ -537,6 +636,7 @@ final class TypeExpression
             'array',
             'bool',
             'callable',
+            'false',
             'float',
             'int',
             'iterable',
@@ -546,16 +646,17 @@ final class TypeExpression
             'object',
             'resource',
             'string',
+            'true',
             'void',
         ], true)) {
             return $type;
         }
 
-        if (1 === Preg::match('/\[\]$/', $type)) {
+        if (Preg::match('/\[\]$/', $type)) {
             return 'array';
         }
 
-        if (1 === Preg::match('/^(.+?)</', $type, $matches)) {
+        if (Preg::match('/^(.+?)</', $type, $matches)) {
             return $matches[1];
         }
 
@@ -577,7 +678,7 @@ final class TypeExpression
     }
 
     /**
-     * @return array<string,string>
+     * @return array<string, string>
      */
     private function getAliases(): array
     {

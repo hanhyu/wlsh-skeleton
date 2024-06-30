@@ -25,6 +25,7 @@ use PhpCsFixer\FixerDefinition\CodeSample;
 use PhpCsFixer\FixerDefinition\FixerDefinition;
 use PhpCsFixer\FixerDefinition\FixerDefinitionInterface;
 use PhpCsFixer\Preg;
+use PhpCsFixer\Tokenizer\Analyzer\SwitchAnalyzer;
 use PhpCsFixer\Tokenizer\CT;
 use PhpCsFixer\Tokenizer\Token;
 use PhpCsFixer\Tokenizer\Tokens;
@@ -255,7 +256,7 @@ switch($a) {
      * {@inheritdoc}
      *
      * Must run before BlankLineBeforeStatementFixer.
-     * Must run after ClassAttributesSeparationFixer, CombineConsecutiveUnsetsFixer, EmptyLoopBodyFixer, EmptyLoopConditionFixer, FunctionToConstantFixer, ModernizeStrposFixer, NoEmptyCommentFixer, NoEmptyPhpdocFixer, NoEmptyStatementFixer, NoUnusedImportsFixer, NoUselessElseFixer, NoUselessReturnFixer, NoUselessSprintfFixer, StringLengthToEmptyFixer.
+     * Must run after ClassAttributesSeparationFixer, CombineConsecutiveUnsetsFixer, EmptyLoopBodyFixer, EmptyLoopConditionFixer, FunctionToConstantFixer, LongToShorthandOperatorFixer, ModernizeStrposFixer, NoEmptyCommentFixer, NoEmptyPhpdocFixer, NoEmptyStatementFixer, NoUnusedImportsFixer, NoUselessElseFixer, NoUselessReturnFixer, NoUselessSprintfFixer, PhpdocReadonlyClassCommentToKeywordFixer, StringLengthToEmptyFixer, YieldFromArrayToYieldsFixer.
      */
     public function getPriority(): int
     {
@@ -330,7 +331,7 @@ switch($a) {
 
     private function removeMultipleBlankLines(int $index): void
     {
-        $expected = $this->tokens[$index - 1]->isGivenKind(T_OPEN_TAG) && 1 === Preg::match('/\R$/', $this->tokens[$index - 1]->getContent()) ? 1 : 2;
+        $expected = $this->tokens[$index - 1]->isGivenKind(T_OPEN_TAG) && Preg::match('/\R$/', $this->tokens[$index - 1]->getContent()) ? 1 : 2;
 
         $parts = Preg::split('/(.*\R)/', $this->tokens[$index]->getContent(), -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
         $count = \count($parts);
@@ -374,9 +375,17 @@ switch($a) {
 
     private function fixAfterThrowToken(int $index): void
     {
-        if ($this->tokens[$this->tokens->getPrevMeaningfulToken($index)]->equalsAny([';', '{', '}', ':', [T_OPEN_TAG]])) {
-            $this->fixAfterToken($index);
+        $prevIndex = $this->tokens->getPrevMeaningfulToken($index);
+
+        if (!$this->tokens[$prevIndex]->equalsAny([';', '{', '}', ':', [T_OPEN_TAG]])) {
+            return;
         }
+
+        if ($this->tokens[$prevIndex]->equals(':') && !SwitchAnalyzer::belongsToSwitch($this->tokens, $prevIndex)) {
+            return;
+        }
+
+        $this->fixAfterToken($index);
     }
 
     /**
